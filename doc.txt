@@ -1,0 +1,23 @@
+bank_table: 0x06788000
+sound_bank* bank_ptr[16];
+
+sound_bank:
+u16 program_offset[128];
+
+
+"seq_table": "0x78f000", 0x678f000
+u16 seq_count;
+u8 unk2;
+u8 unk3;
+u32 seq_offset[seq_count];
+
+sequence: (packed)
+u8 flags;
+u16 track_offset[16];
+
+
+"samp_table": "0x78C000", 0x678C000
+u32 start_addr;
+u32 loop_addr;
+u32 end_addr;
+u32 key;
