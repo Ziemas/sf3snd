@@ -17,5 +17,6 @@ target_sources(
   PRIVATE
   src/main.cc
   src/loader.cc
+  src/player.cc
 )
 target_link_libraries(sf3snd PRIVATE SDL3::SDL3 PkgConfig::readline)

@@ -3,7 +3,7 @@
 
 #include "BinaryReader.h"
 #include "common.h"
-#include "snd.h"
+#include "snd_data.h"
 
 #include <memory>
 #include <span>

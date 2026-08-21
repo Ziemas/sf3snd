@@ -1,6 +1,6 @@
 #include "loader.h"
 #include "BinaryReader.h"
-#include "snd.h"
+#include "snd_data.h"
 
 #include <cstdio>
 #include <memory>
@@ -123,6 +123,14 @@ static void readBanks(SoundData& sd, BinaryReader& r)
     }
 }
 
+template <typename T>
+void loadArray(T* dst, int size, BinaryReader& r)
+{
+    for (int i = 0; i < size; i++) {
+        dst[i] = std::byteswap(r.read<T>());
+    }
+}
+
 std::unique_ptr<SoundData> loadSoundData(std::span<u8> code, std::span<u8> data)
 {
     auto sd = std::make_unique<SoundData>();
@@ -139,6 +147,16 @@ std::unique_ptr<SoundData> loadSoundData(std::span<u8> code, std::span<u8> data)
 
     cr.set_seek(0x788000);
     readBanks(*sd, cr);
+
+    //cr.set_seek(0x60cbf8);
+	// TODO these vary in location depending on ROM version, just copy these into the code?
+    cr.set_seek(0x60cd44);
+    loadArray(sd->ar_table, 64, cr);
+    loadArray(sd->dr_table, 64, cr);
+    loadArray(sd->lfo_table, 128, cr);
+    loadArray(sd->vibrato_table, 128, cr);
+    loadArray(sd->tremolo_table, 128, cr);
+    loadArray(sd->freq_table, 3072, cr);
 
     return sd;
 }

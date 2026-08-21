@@ -48,6 +48,13 @@ struct SoundData {
     std::unordered_map<u32, Sound> sound;
     Bank instrumentBank[16];
     Sample sample[0x300];
+
+	u16 ar_table[64];
+	u16 dr_table[64];
+	u16 lfo_table[128];
+	u16 vibrato_table[128];
+	u16 tremolo_table[128];
+	u16 freq_table[3072];
 };
 
 #endif // SND_H_
