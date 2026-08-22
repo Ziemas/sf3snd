@@ -129,6 +129,8 @@ int startAudio()
 		return -1;
     }
 
+    SDL_ResumeAudioStreamDevice(stream);
+
 	return 0;
 }
 
@@ -149,6 +151,8 @@ int main(int argc, char** argv)
 	}
 
     commands["play"] = playSound;
+
+	player->SsRequest(1);
 
     command_loop();
 
