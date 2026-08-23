@@ -8,21 +8,40 @@
 struct sndChannel {
     u8* seq_ptr;
     u8* sequence;
+    Tone* tone;
     Sample* sample;
-    Program* prog;
-    u8* loopPoint[4];
 
     int pitch;
+    int currentPitch;
     int duration; // duration of current note
     int delay; // delay until next sequence event
-    int currentPitch;
+
+    u8* loopPoint[4];
 
     ushort vibrato;
     ushort tremolo;
     ushort lfoRate;
+    ushort unk58;
+    short transpose;
+    ushort portamento_unk44;
+    ushort portamento_unk46;
+    ushort attackStep;
+    ushort attackTarget;
+    ushort decayStep;
+    ushort sustainStep;
+    ushort sustainTarget;
+    ushort releaseStep;
 
+    // changed to int to simplify envelope checking
+    int envLevel;
+
+    u8 envState;
+    u8 newNote;
+    u8 noteActive;
+    u8 unk66;
+    u8 unk68;
     u8 loopFlags[4];
-	u8 note;
+    u8 note;
     u8 flags;
     u8 pitchBend;
     u8 fineTune;
@@ -30,12 +49,16 @@ struct sndChannel {
     u8 progId;
     s8 volume;
     u8 velocity;
+    u8 pan;
+    u8 expression;
+    u8 seqFlags;
 };
 
 struct sndVoice {
-    std::vector<u8>* sample;
+    std::vector<s8>* sample;
 
     u32 counter;
+    u32 loopAddr;
     u32 pos;
     u32 pitch;
     u32 voll;
@@ -43,13 +66,26 @@ struct sndVoice {
 
     bool key;
     bool loop;
+
+    void keyOn()
+    {
+        counter = 0;
+        pos = 0;
+        key = 1;
+    }
+
+    void keyOff()
+    {
+        key = 0;
+    }
 };
 
 enum chFlag {
-    SEQ_PORTAMENTO = 0x2,
-    SEQ_DELAY = 0x20,
-    SEQ_END = 0x40,
-    SEQ_INACTIVE = 0x80,
+    CH_UNK1 = 0x1,
+    CH_PORTAMENTO = 0x2,
+    CH_DELAY = 0x20,
+    CH_END = 0x40,
+    CH_INACTIVE = 0x80,
 };
 
 class Sf3Player {
@@ -65,22 +101,28 @@ public:
 
 private:
     void StepSequencer();
-    void StepSequence(sndChannel& ch, int idx, bool bgm);
-    void StepChannel(sndChannel& ch, int idx, bool bgm);
     void StepSynth(s16* out);
 
-	u64 sequence_acc;
+    void StepChannel(sndChannel& ch, int idx, bool bgm);
 
-    sndChannel bgm_chan[16];
-    sndChannel sfx_chan[16];
+    void playNote(sndChannel& ch, int note, int velocity);
+    void readSeqCtrl(sndChannel& ch, int idx, bool bgm);
+    void StepSequence(sndChannel& ch, int idx, bool bgm);
+
+	int calcPitch(int pitch);
+
+    u64 sequenceAcc;
+
+    sndChannel bgmChan[16];
+    sndChannel sfxChan[16];
 
     sndVoice voice[16];
 
-    u32 bgm_tempo;
-    u32 channel_tempo[16];
+    u32 bgmTempo;
+    u32 channelTempo[16];
+    u8 seqStatus[16];
 
     std::unique_ptr<SoundData> data;
-
 };
 
 #endif // PLAYER_H_
