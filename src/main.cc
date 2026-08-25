@@ -152,7 +152,7 @@ int main(int argc, char** argv)
 
     commands["play"] = playSound;
 
-	player->SsRequest(23);
+	player->SsRequest(25);
 
     command_loop();
 

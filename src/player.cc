@@ -7,12 +7,10 @@ static std::pair<size_t, u32> readDelay(u8* value)
     size_t len = 0;
     u32 out = 0;
 
-    if ((*value & 0x80) == 0) {
-        while ((*value & 0x80) == 0) {
-            len++;
-            value++;
-            out = (out << 7) + (*value & 0x7f);
-        }
+    while ((*value & 0x80) == 0) {
+        out = (out << 7) + *value;
+        len++;
+        value++;
     }
 
     return { len, out };
@@ -24,16 +22,26 @@ static std::pair<size_t, u32> readVLQ(u8* value)
     size_t len = 1;
     u32 out = *value & 0x7f;
 
-    if ((*value & 0x80) != 0) {
-        while ((*value & 0x80) != 0) {
-            len++;
-            value++;
-            out = (out << 7) + (*value & 0x7f);
-        }
+    while ((*value & 0x80) != 0) {
+        len++;
+        value++;
+        out = (out << 7) + (*value & 0x7f);
     }
 
     return { len, out };
 }
+
+Sf3Player::Sf3Player(std::unique_ptr<SoundData> _data)
+    : data(std::move(_data))
+{
+    for (auto& ch : bgmChan) {
+        ch.flags = CH_INACTIVE | CH_END;
+    }
+
+    for (auto& ch : sfxChan) {
+        ch.flags = CH_INACTIVE | CH_END;
+    }
+};
 
 std::unique_ptr<Sf3Player> Sf3Player::makePlayer(std::unique_ptr<SoundData> _data)
 {
@@ -59,6 +67,8 @@ void Sf3Player::SsRequestPan(int sound, int pan)
         for (int i = 0; i < 16; i++) {
             auto& c = bgmChan[i];
             auto& t = snd.track_sequence[i];
+            c = {};
+
             if (t.empty()) {
                 c.flags = CH_INACTIVE | CH_END;
                 continue;
@@ -76,6 +86,9 @@ void Sf3Player::SsRequestPan(int sound, int pan)
             c.tone = &prog->instrument[0];
             c.sample = &data->sample[prog->instrument[0].sampleIdx];
             c.seqFlags = snd.flags;
+            c.pan = 0x40;
+            c.fineTune = 0x40;
+            c.unk64 = 0x40;
         }
     }
 }
@@ -174,6 +187,7 @@ void Sf3Player::StepChannel(sndChannel& ch, int idx, bool bgm)
 
     if (ch.newNote) {
         ch.newNote = 0;
+        // TODO
         ch.currentPitch = ch.pitch;
         if (ch.unk66 == 0) {
             // TODO
@@ -187,7 +201,7 @@ void Sf3Player::StepChannel(sndChannel& ch, int idx, bool bgm)
                 vc.sample = &ch.sample->pcm;
                 vc.loopAddr = ch.sample->loopAddr;
                 vc.loop = ch.sample->loopAddr != ch.sample->pcm.size();
-				keyOn = 1;
+                keyOn = 1;
             }
 
             // TODO
@@ -253,32 +267,71 @@ void Sf3Player::StepChannel(sndChannel& ch, int idx, bool bgm)
 
     // TODO pan
 
-	vc.voll = 0x7fff;
-	vc.volr = 0x7fff;
-
-    int pitch = 0;
-    if (bgm) {
-        pitch = ch.currentPitch;
-    } else {
-        pitch = ch.currentPitch;
+    if (!commitRegs) {
+        return;
     }
+
+    int pan;
+    if (bgm || chPan[idx].mode == -1) {
+        pan = ch.tone->pan;
+        if (pan == 0xff) {
+            pan = ch.pan;
+        }
+    } else {
+        pan = chPan[idx].start >> 8;
+        ;
+    }
+
+    vc.voll = 0x1fff;
+    vc.volr = 0x1fff;
+
+    int pitch = ch.currentPitch + (ch.pitchBend * 0xc00 >> 7) + ((ch.fineTune - 0x40) * 0x100 >> 6);
 
     vc.pitch = calcPitch(pitch);
 
     if (keyOn) {
-		std::println("key on");
         vc.keyOn();
     }
 }
 
-void Sf3Player::playNote(sndChannel& ch, int note, int velocity)
+int Sf3Player::playNote(sndChannel& ch, int note, int velocity)
 {
     ch.note = note;
     ch.velocity = velocity;
 
-    auto prog = data->instrumentBank[ch.bankId].program[ch.progId];
-    if (prog.has_value() && !prog.value().instrument.empty()) {
+    auto& bank = data->instrumentBank[ch.bankId];
+    if (!bank.program[ch.progId].has_value()) {
+        return -1;
     }
+
+    auto& prog = bank.program[ch.progId].value();
+    if (prog.instrument.empty()) {
+        return -1;
+    }
+
+    Tone* t = nullptr;
+    for (auto& i : prog.instrument) {
+        if (note <= i.range) {
+            t = &i;
+            break;
+        }
+    }
+
+    if (t == nullptr) {
+        return -1;
+    }
+
+    ch.tone = t;
+    ch.sample = &data->sample[t->sampleIdx];
+    ch.pitch = ((note - ch.sample->key) + ch.transpose + 7) * 0x100 + 0x80 + ch.tone->fineTune;
+    ch.attackTarget = velocity << 8;
+    ch.sustainTarget = ((t->sustainLevel + 1) * ch.attackTarget) >> 7;
+    ch.attackStep = envRate(ch.attackTarget, t->attackRate, data->ar_table);
+    ch.attackStep = ch.attackStep * (ch.velocity + 1) >> 7;
+    ch.decayStep = envRate(ch.attackTarget, t->decayRate, data->dr_table);
+    ch.sustainStep = envRate(ch.sustainTarget, t->sustainRate, data->dr_table);
+
+    return 0;
 }
 
 void Sf3Player::readSeqCtrl(sndChannel& ch, int idx, bool bgm)
@@ -316,14 +369,17 @@ void Sf3Player::readSeqCtrl(sndChannel& ch, int idx, bool bgm)
         break;
     case 0xc6:
         ch.volume = ch.seq_ptr[1];
+        // std::println("volume {:x}", ch.volume);
         ch.seq_ptr += 2;
         break;
     case 0xc7:
         ch.pan = ch.seq_ptr[1];
+        // std::println("pan {:x}", ch.pan);
         ch.seq_ptr += 2;
         break;
     case 0xc8:
         ch.expression = ch.seq_ptr[1];
+        // std::println("expression {:x}", ch.expression);
         ch.seq_ptr += 2;
         break;
     case 0xc9: {
@@ -369,29 +425,42 @@ void Sf3Player::readSeqCtrl(sndChannel& ch, int idx, bool bgm)
     case 0xd0:
     case 0xd1:
     case 0xd2:
-    case 0xd3:
+    case 0xd3: {
         // loop start
-        ch.loopPoint[status - 0xd0] = ch.seq_ptr;
+        int idx = status - 0xd0;
+        ch.loopPoint[idx] = ch.seq_ptr + 1;
         ch.seq_ptr += 1;
-        break;
+    } break;
     case 0xd4:
     case 0xd5:
     case 0xd6:
-    case 0xd7:
-        // loop
-        // int loop = status - 0xd4;
-        // if (ch.loopFlags[loop] == 0) {
-        //	ch.loopFlags[loop] = ch.seq_ptr[1];
-        //}
-        // ch.seq_ptr = ch.loopPoint[loop];
-        ch.seq_ptr += 2;
-        break;
+    case 0xd7: {
+        // loop end
+        int idx = status - 0xd4;
+
+        if (ch.loopCount[idx] == 0) {
+            ch.loopCount[idx] = ch.seq_ptr[1];
+        } else {
+            ch.loopCount[idx]--;
+            if (ch.loopCount[idx] == 0) {
+                ch.seq_ptr += 2;
+                break;
+            }
+        }
+        ch.seq_ptr = ch.loopPoint[idx];
+    } break;
     case 0xd8:
     case 0xd9:
     case 0xda:
-    case 0xdb:
+    case 0xdb: {
+        int idx = status - 0xd8;
+        if (ch.loopCount[idx] == 1) {
+            ch.loopCount[idx] = 0;
+            ch.seq_ptr += (ch.seq_ptr[1] << 8) + ch.seq_ptr[2];
+        }
+
         ch.seq_ptr += 3;
-        break;
+    } break;
     case 0xdc:
         ch.transpose = (s8)ch.seq_ptr[1];
         ch.seq_ptr += 2;
@@ -451,6 +520,7 @@ void Sf3Player::readSeqCtrl(sndChannel& ch, int idx, bool bgm)
         break;
     default:
         std::println("Unrecognized status {:x}", status);
+        exit(0);
         break;
     }
 }
@@ -467,10 +537,33 @@ void Sf3Player::StepSequence(sndChannel& ch, int idx, bool bgm)
         if (status < 0xc0) {
             int velocity = (ch.seq_ptr[0] & 0x3f) << 1;
             int note = ch.seq_ptr[1] & 0x7f;
+            int unkMsb = ch.seq_ptr[1] & 0x80;
 
-            std::println("[ch{}] note: {:x}, vel: {:x}", idx, ch.note, ch.velocity);
+            std::println("[ch{}] note: {:x}, vel: {:x}", idx, note, velocity);
 
-            playNote(ch, note, velocity);
+            int res = playNote(ch, note, velocity);
+            if (!res) {
+                ch.newNote = 1;
+
+                if (ch.unk6a == 0) {
+                    ch.unk66 = 1;
+                } else {
+                    ch.unk66 = 0;
+                }
+
+                if (unkMsb == 0) {
+                    ch.noteActive = 1;
+                    ch.unk6a = 0;
+                } else {
+                    ch.noteActive = 0;
+                    ch.unk6a = 1;
+                }
+            } else {
+                ch.newNote = 0;
+                ch.noteActive = 0;
+                ch.unk66 = 0;
+                ch.unk6a = 0;
+            }
 
             ch.seq_ptr += 2;
             auto [len, duration] = readVLQ(ch.seq_ptr);
@@ -517,8 +610,39 @@ void Sf3Player::StepSequencer()
 
 void Sf3Player::StepSynth(s16* out)
 {
+    int accl = 0, accr = 0;
+
     for (auto& v : voice) {
+        if (!v.key) {
+            continue;
+        }
+
+        int size = v.sample->size();
+
+        int s1 = (*v.sample)[v.pos] << 8;
+        int s2 = (*v.sample)[(v.pos + 1) % size] << 8;
+
+		// linear interpolation, figure out if people like it i guess
+        int sample = (s1 * (0xfff - v.counter) + s2 * v.counter) >> 12;
+
+        accl += (sample * v.voll) >> 15;
+        accr += (sample * v.volr) >> 15;
+
+        v.counter += v.pitch;
+        v.pos += v.counter >> 12;
+        v.counter &= 0xfff;
+
+        if (v.pos >= v.sample->size()) {
+            if (v.loop) {
+                v.pos = 0;
+            } else {
+                v.key = 0;
+            }
+        }
     }
+
+    out[0] = std::clamp(accl, -0x8000, 0x7fff);
+    out[1] = std::clamp(accr, -0x8000, 0x7fff);
 }
 
 void Sf3Player::Step(int steps, s16* out)

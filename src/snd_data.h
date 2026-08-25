@@ -24,7 +24,7 @@ struct Tone {
     u8 volume;
     u8 unk;
     u16 sampleIdx;
-    u8 fineTune;
+    s8 fineTune;
     u8 attackRate;
     u8 decayRate;
     u8 sustainLevel;

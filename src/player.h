@@ -38,13 +38,15 @@ struct sndChannel {
     u8 envState;
     u8 newNote;
     u8 noteActive;
+    u8 unk64;
     u8 unk66;
     u8 unk68;
-    u8 loopFlags[4];
+    u8 unk6a;
+    s8 loopCount[4];
     u8 note;
     u8 flags;
-    u8 pitchBend;
-    u8 fineTune;
+    s8 pitchBend;
+    s8 fineTune;
     u8 bankId;
     u8 progId;
     s8 volume;
@@ -61,8 +63,8 @@ struct sndVoice {
     u32 loopAddr;
     u32 pos;
     u32 pitch;
-    u32 voll;
-    u32 volr;
+    s32 voll;
+    s32 volr;
 
     bool key;
     bool loop;
@@ -80,6 +82,13 @@ struct sndVoice {
     }
 };
 
+struct sndPanState {
+    u16 start;
+    s16 end;
+    s16 step;
+    s16 mode;
+};
+
 enum chFlag {
     CH_UNK1 = 0x1,
     CH_PORTAMENTO = 0x2,
@@ -90,8 +99,7 @@ enum chFlag {
 
 class Sf3Player {
 public:
-    Sf3Player(std::unique_ptr<SoundData> _data)
-        : data(std::move(_data)) {};
+    Sf3Player(std::unique_ptr<SoundData> _data);
 
     static std::unique_ptr<Sf3Player> makePlayer(std::unique_ptr<SoundData> _data);
     void SsRequest(int sound);
@@ -105,17 +113,18 @@ private:
 
     void StepChannel(sndChannel& ch, int idx, bool bgm);
 
-    void playNote(sndChannel& ch, int note, int velocity);
+    int playNote(sndChannel& ch, int note, int velocity);
     void readSeqCtrl(sndChannel& ch, int idx, bool bgm);
     void StepSequence(sndChannel& ch, int idx, bool bgm);
 
-	int calcPitch(int pitch);
+    int calcPitch(int pitch);
 
     u64 sequenceAcc;
 
     sndChannel bgmChan[16];
     sndChannel sfxChan[16];
 
+    sndPanState chPan[16];
     sndVoice voice[16];
 
     u32 bgmTempo;
