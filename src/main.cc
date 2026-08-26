@@ -16,6 +16,7 @@
 
 std::unique_ptr<Sf3Player> player;
 static SDL_AudioStream* stream;
+SDL_Mutex* soundLock;
 
 std::unordered_map<std::string, int (*)(int, char**)> commands;
 
@@ -89,7 +90,9 @@ static int playSound(int ac, char** tokens)
         return -1;
     }
 
+    SDL_LockMutex(soundLock);
     player->SsRequest(idx);
+    SDL_UnlockMutex(soundLock);
 
     return 0;
 }
@@ -98,6 +101,8 @@ void SDL_CB(void* user, SDL_AudioStream* stream, int additional_amount, int tota
 {
     (void)total_amount;
     (void)user;
+
+    SDL_LockMutex(soundLock);
 
     u32 samples_per_channel = (additional_amount / sizeof(s16)) >> 1;
     static s16 outbuf[4096] = {};
@@ -110,12 +115,16 @@ void SDL_CB(void* user, SDL_AudioStream* stream, int additional_amount, int tota
         SDL_PutAudioStreamData(stream, outbuf, (batch_count * sizeof(s16)) << 1);
         samples_per_channel -= batch_count;
     }
+
+    SDL_UnlockMutex(soundLock);
 }
 
 int startAudio()
 {
     SDL_SetHint(SDL_HINT_NO_SIGNAL_HANDLERS, "1");
     SDL_Init(SDL_INIT_AUDIO);
+
+    soundLock = SDL_CreateMutex();
 
     SDL_AudioSpec spec;
 
@@ -126,12 +135,12 @@ int startAudio()
     stream = SDL_OpenAudioDeviceStream(SDL_AUDIO_DEVICE_DEFAULT_PLAYBACK, &spec, SDL_CB, NULL);
     if (!stream) {
         SDL_Log("Couldn't create SDL audio stream: %s", SDL_GetError());
-		return -1;
+        return -1;
     }
 
     SDL_ResumeAudioStreamDevice(stream);
 
-	return 0;
+    return 0;
 }
 
 int main(int argc, char** argv)
@@ -139,20 +148,21 @@ int main(int argc, char** argv)
     (void)argc;
     (void)argv;
 
-
     std::vector<u8> code = read_binary_file("decrypted.bin");
     std::vector<u8> data = read_binary_file("user5.bin");
 
     auto soundData = loadSoundData(code, data);
     player = Sf3Player::makePlayer(std::move(soundData));
 
-	if (startAudio() < 0) {
-		return -1;
-	}
+    if (startAudio() < 0) {
+        return -1;
+    }
 
     commands["play"] = playSound;
 
-	player->SsRequest(25);
+    SDL_LockMutex(soundLock);
+    player->SsRequest(3);
+    SDL_UnlockMutex(soundLock);
 
     command_loop();
 
