@@ -103,6 +103,7 @@ public:
     Sf3Player(std::unique_ptr<SoundData> _data);
 
     static std::unique_ptr<Sf3Player> makePlayer(std::unique_ptr<SoundData> _data);
+    void SsBgmOff();
     void SsRequest(int sound);
     void SsRequestPan(int sound, int pan);
 
@@ -120,7 +121,7 @@ private:
 
     int calcPitch(int pitch);
 
-    u64 sequenceAcc;
+    u64 sequenceAcc = 0;
 
     sndChannel bgmChan[16];
     sndChannel sfxChan[16];
@@ -128,9 +129,11 @@ private:
     sndPanState chPan[16];
     sndVoice voice[16];
 
-    u32 bgmTempo;
+    u32 bgmTempo = 0;
     u32 channelTempo[16];
     u8 seqStatus[16];
+
+    bool bgmOn = 0;
 
     std::unique_ptr<SoundData> data;
 };

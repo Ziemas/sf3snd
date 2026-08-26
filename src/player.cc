@@ -48,6 +48,17 @@ std::unique_ptr<Sf3Player> Sf3Player::makePlayer(std::unique_ptr<SoundData> _dat
     return std::make_unique<Sf3Player>(std::move(_data));
 }
 
+void Sf3Player::SsBgmOff()
+{
+    if (bgmOn) {
+        for (auto& ch : bgmChan) {
+            ch.chFlags = CH_INACTIVE | CH_END;
+        }
+
+        bgmOn = 0;
+    }
+}
+
 void Sf3Player::SsRequest(int sound)
 {
     SsRequestPan(sound, -1);
@@ -63,16 +74,18 @@ void Sf3Player::SsRequestPan(int sound, int pan)
 
     Sound& snd = it->second;
     if (snd.flags == 0) {
-        // does this mean BGM?
+		SsBgmOff();
+
         for (int i = 0; i < 16; i++) {
             auto& c = bgmChan[i];
             auto& t = snd.track_sequence[i];
-            c = {};
 
             if (t.empty()) {
                 c.chFlags = CH_INACTIVE | CH_END;
                 continue;
             }
+
+            c = {};
 
             c.seq_ptr = t.data();
 
@@ -90,6 +103,8 @@ void Sf3Player::SsRequestPan(int sound, int pan)
             c.fineTune = 0x40;
             c.unk64 = 0x40;
         }
+
+        bgmOn = 1;
     }
 }
 
@@ -525,7 +540,7 @@ int Sf3Player::readSeqCtrl(sndChannel& ch, int idx, bool bgm)
         break;
     case 0xff:
         ch.chFlags |= CH_END;
-		return -1;
+        return -1;
         break;
     default:
         std::println("[ch{}] Unrecognized status {:x} {:x}", idx, status, ch.chFlags);
