@@ -13,9 +13,11 @@ static void readSamples(Sample& s, BinaryReader& r, std::span<u8> data)
     u32 key = std::byteswap(r.read<u32>());
 
     u32 size = end_addr - start_addr;
-
     s.pcm.resize(size);
-    std::memcpy(s.pcm.data(), &data[start_addr], size);
+
+    if (size) {
+        std::memcpy(s.pcm.data(), &data[start_addr], size);
+    }
 
     s.loopAddr = loop_addr - start_addr;
     s.key = key;
@@ -38,9 +40,10 @@ static Sound readSequence(BinaryReader& r)
             r.set_seek(pos + offsets[i]);
 
             u8 sq;
-            while ((sq = r.read<u8>()) != 0xff) {
+            do {
+                sq = r.read<u8>();
                 s.track_sequence[i].push_back(sq);
-            }
+            } while (sq != 0xff);
         }
     }
 
@@ -148,8 +151,8 @@ std::unique_ptr<SoundData> loadSoundData(std::span<u8> code, std::span<u8> data)
     cr.set_seek(0x788000);
     readBanks(*sd, cr);
 
-    //cr.set_seek(0x60cbf8);
-	// TODO these vary in location depending on ROM version, just copy these into the code?
+    // cr.set_seek(0x60cbf8);
+    //  TODO these vary in location depending on ROM version, just copy these into the code?
     cr.set_seek(0x60cd44);
     loadArray(sd->ar_table, 64, cr);
     loadArray(sd->dr_table, 64, cr);

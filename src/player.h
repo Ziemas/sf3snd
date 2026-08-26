@@ -39,12 +39,13 @@ struct sndChannel {
     u8 newNote;
     u8 noteActive;
     u8 unk64;
+    u8 unk65;
     u8 unk66;
     u8 unk68;
     u8 unk6a;
     s8 loopCount[4];
     u8 note;
-    u8 flags;
+    u8 chFlags;
     s8 pitchBend;
     s8 fineTune;
     u8 bankId;
@@ -59,10 +60,10 @@ struct sndChannel {
 struct sndVoice {
     std::vector<s8>* sample;
 
-    u32 counter;
+    s32 counter;
     u32 loopAddr;
     u32 pos;
-    u32 pitch;
+    s32 pitch;
     s32 voll;
     s32 volr;
 
@@ -90,7 +91,7 @@ struct sndPanState {
 };
 
 enum chFlag {
-    CH_UNK1 = 0x1,
+    CH_LFO = 0x1,
     CH_PORTAMENTO = 0x2,
     CH_DELAY = 0x20,
     CH_END = 0x40,
@@ -114,7 +115,7 @@ private:
     void StepChannel(sndChannel& ch, int idx, bool bgm);
 
     int playNote(sndChannel& ch, int note, int velocity);
-    void readSeqCtrl(sndChannel& ch, int idx, bool bgm);
+    int readSeqCtrl(sndChannel& ch, int idx, bool bgm);
     void StepSequence(sndChannel& ch, int idx, bool bgm);
 
     int calcPitch(int pitch);

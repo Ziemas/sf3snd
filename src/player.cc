@@ -35,11 +35,11 @@ Sf3Player::Sf3Player(std::unique_ptr<SoundData> _data)
     : data(std::move(_data))
 {
     for (auto& ch : bgmChan) {
-        ch.flags = CH_INACTIVE | CH_END;
+        ch.chFlags = CH_INACTIVE | CH_END;
     }
 
     for (auto& ch : sfxChan) {
-        ch.flags = CH_INACTIVE | CH_END;
+        ch.chFlags = CH_INACTIVE | CH_END;
     }
 };
 
@@ -70,7 +70,7 @@ void Sf3Player::SsRequestPan(int sound, int pan)
             c = {};
 
             if (t.empty()) {
-                c.flags = CH_INACTIVE | CH_END;
+                c.chFlags = CH_INACTIVE | CH_END;
                 continue;
             }
 
@@ -81,7 +81,7 @@ void Sf3Player::SsRequestPan(int sound, int pan)
 
             c.sequence = t.data();
             c.delay = delay << 8;
-            c.flags = CH_DELAY;
+            c.chFlags = CH_DELAY;
             auto* prog = &data->instrumentBank[0].program[0].value();
             c.tone = &prog->instrument[0];
             c.sample = &data->sample[prog->instrument[0].sampleIdx];
@@ -138,11 +138,11 @@ void Sf3Player::StepChannel(sndChannel& ch, int idx, bool bgm)
     bool commitRegs = 1;
 
     // If theres a sound effect using the channel, it should have priority
-    if (bgm && (sfxChan[idx].flags & CH_INACTIVE) == 0) {
+    if (bgm && (sfxChan[idx].chFlags & CH_INACTIVE) == 0) {
         commitRegs = 0;
     }
 
-    if (ch.flags & CH_INACTIVE) {
+    if (ch.chFlags & CH_INACTIVE) {
         if (!bgm || !commitRegs) {
             return;
         }
@@ -167,7 +167,7 @@ void Sf3Player::StepChannel(sndChannel& ch, int idx, bool bgm)
     }
 
     if (ch.delay < 1) {
-        ch.flags &= ~CH_DELAY;
+        ch.chFlags &= ~CH_DELAY;
     }
 
     if (ch.duration < 1 && ch.noteActive) {
@@ -214,9 +214,9 @@ void Sf3Player::StepChannel(sndChannel& ch, int idx, bool bgm)
 
     // TODO bgm thing here
 
-    if (ch.flags & CH_END) {
+    if (ch.chFlags & CH_END) {
         if (ch.envLevel == 0) {
-            ch.flags |= CH_INACTIVE;
+            ch.chFlags |= CH_INACTIVE;
             ch.seqFlags = 0;
             return;
         }
@@ -334,7 +334,7 @@ int Sf3Player::playNote(sndChannel& ch, int note, int velocity)
     return 0;
 }
 
-void Sf3Player::readSeqCtrl(sndChannel& ch, int idx, bool bgm)
+int Sf3Player::readSeqCtrl(sndChannel& ch, int idx, bool bgm)
 {
     u8 status = *ch.seq_ptr;
 
@@ -391,26 +391,35 @@ void Sf3Player::readSeqCtrl(sndChannel& ch, int idx, bool bgm)
             ch.portamento_unk46 = (value + 1) * 2;
             ch.portamento_unk44 = ch.portamento_unk46;
         } else {
-            ch.flags &= ~CH_PORTAMENTO;
+            ch.chFlags &= ~CH_PORTAMENTO;
             ch.portamento_unk46 = 0;
         }
     } break;
     case 0xca:
-        // TODO
-        // ch.seq_ptr = ch.sequence;
+        if (ch.unk65 == 0) {
+            ch.seq_ptr = ch.sequence;
+            ch.unk65 = 1;
+        }
         ch.seq_ptr += 1;
         break;
     case 0xcb:
-        // TODO
-        // ch.flags |= SEQ_END;
+        if (ch.unk65) {
+            ch.chFlags |= CH_END;
+            return -1;
+        }
         ch.seq_ptr += 1;
         break;
     case 0xcc:
-        // TODO
+        if (ch.unk65 == 0) {
+            ch.seq_ptr += (ch.seq_ptr[1] << 8) + ch.seq_ptr[2];
+            ch.unk65 = 1;
+        }
         ch.seq_ptr += 3;
         break;
     case 0xcd:
-        // TODO
+        if (ch.unk65) {
+            ch.seq_ptr += (ch.seq_ptr[1] << 8) + ch.seq_ptr[2];
+        }
         ch.seq_ptr += 3;
         break;
     case 0xce: {
@@ -419,8 +428,7 @@ void Sf3Player::readSeqCtrl(sndChannel& ch, int idx, bool bgm)
         ch.seq_ptr += offset;
     } break;
     case 0xcf:
-        // goto other channel seq ptr?
-        // ch.seq_ptr = ch.sequence;
+        ch.seq_ptr = bgmChan[ch.seq_ptr[1]].sequence;
         break;
     case 0xd0:
     case 0xd1:
@@ -479,9 +487,9 @@ void Sf3Player::readSeqCtrl(sndChannel& ch, int idx, bool bgm)
         break;
     case 0xe0:
         if (ch.seq_ptr[1]) {
-            ch.flags |= CH_UNK1;
+            ch.chFlags |= CH_LFO;
         } else {
-            ch.flags &= ~CH_UNK1;
+            ch.chFlags &= ~CH_LFO;
         }
 
         ch.seq_ptr += 2;
@@ -516,19 +524,26 @@ void Sf3Player::readSeqCtrl(sndChannel& ch, int idx, bool bgm)
         ch.seq_ptr += 3;
         break;
     case 0xff:
-        ch.flags |= CH_END;
+        ch.chFlags |= CH_END;
+		return -1;
         break;
     default:
-        std::println("Unrecognized status {:x}", status);
-        exit(0);
-        break;
+        std::println("[ch{}] Unrecognized status {:x} {:x}", idx, status, ch.chFlags);
+        ch.chFlags |= (CH_END | CH_INACTIVE);
+        return -1;
     }
+
+    return 0;
 }
 
 void Sf3Player::StepSequence(sndChannel& ch, int idx, bool bgm)
 {
-    if (ch.flags & (CH_END | CH_DELAY)) {
+    if (ch.chFlags & (CH_END | CH_DELAY)) {
         return;
+    }
+
+    if (idx == 8 && ch.chFlags & CH_END) {
+        std::println("???");
     }
 
     while (1) {
@@ -570,7 +585,10 @@ void Sf3Player::StepSequence(sndChannel& ch, int idx, bool bgm)
             ch.seq_ptr += len;
             ch.duration = duration << 8;
         } else {
-            readSeqCtrl(ch, idx, bgm);
+            int ret = readSeqCtrl(ch, idx, bgm);
+            if (ret < 0) {
+                return;
+            }
         }
 
         auto [len, delay] = readDelay(ch.seq_ptr);
@@ -582,7 +600,7 @@ void Sf3Player::StepSequence(sndChannel& ch, int idx, bool bgm)
         }
     }
 
-    ch.flags |= CH_DELAY;
+    ch.chFlags |= CH_DELAY;
 }
 
 void Sf3Player::StepSequencer()
@@ -622,7 +640,7 @@ void Sf3Player::StepSynth(s16* out)
         int s1 = (*v.sample)[v.pos] << 8;
         int s2 = (*v.sample)[(v.pos + 1) % size] << 8;
 
-		// linear interpolation, figure out if people like it i guess
+        // linear interpolation, figure out if people like it i guess
         int sample = (s1 * (0xfff - v.counter) + s2 * v.counter) >> 12;
 
         accl += (sample * v.voll) >> 15;
