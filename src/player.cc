@@ -684,8 +684,8 @@ void Sf3Player::Step(int steps, s16* out)
         sequenceAcc += 59599491;
 
         if (sequenceAcc >= 37286000000) {
+            sequenceAcc -= 37286000000;
             StepSequencer();
-            sequenceAcc = 0;
         }
 
         StepSynth(out);
