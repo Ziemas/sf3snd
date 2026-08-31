@@ -55,8 +55,8 @@ static void readSounds(SoundData& sd, BinaryReader& r)
     u32 pos = r.get_seek();
 
     u16 seq_count = std::byteswap(r.read<u16>());
-    sd.unk2 = r.read<u8>();
-    sd.unk3 = r.read<u8>();
+    sd.bgmVol = r.read<u8>();
+    sd.volume = r.read<u8>();
 
     for (int i = 0; i < seq_count; i++) {
         u32 offset = std::byteswap(r.read<u32>());

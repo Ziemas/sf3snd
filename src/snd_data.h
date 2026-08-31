@@ -41,9 +41,8 @@ struct Bank {
 };
 
 struct SoundData {
-    // The unks from the sound list, volume related?
-    u8 unk2;
-    u8 unk3;
+    u8 bgmVol;
+    u8 volume;
 
     std::unordered_map<u32, Sound> sound;
     Bank instrumentBank[16];
