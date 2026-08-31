@@ -97,6 +97,26 @@ static int playSound(int ac, char** tokens)
     return 0;
 }
 
+static int queueSound(int ac, char** tokens)
+{
+    if (ac < 2) {
+        return -1;
+    }
+
+    int idx;
+    auto res = std::from_chars(tokens[1], tokens[1] + strlen(tokens[1]), idx);
+    if (res.ec != std::errc {}) {
+        std::println("?");
+        return -1;
+    }
+
+    SDL_LockMutex(soundLock);
+    player->SsQueue(idx);
+    SDL_UnlockMutex(soundLock);
+
+    return 0;
+}
+
 void SDL_CB(void* user, SDL_AudioStream* stream, int additional_amount, int total_amount)
 {
     (void)total_amount;
@@ -125,6 +145,7 @@ int startAudio()
     SDL_Init(SDL_INIT_AUDIO);
 
     soundLock = SDL_CreateMutex();
+
 
     SDL_AudioSpec spec;
 
@@ -159,9 +180,11 @@ int main(int argc, char** argv)
     }
 
     commands["play"] = playSound;
+    commands["p"] = playSound;
+    commands["q"] = queueSound;
 
     SDL_LockMutex(soundLock);
-    player->SsRequest(3);
+    //player->SsRequest(3);
     SDL_UnlockMutex(soundLock);
 
     command_loop();

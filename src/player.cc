@@ -34,6 +34,10 @@ static std::pair<size_t, u32> readVLQ(u8* value)
 Sf3Player::Sf3Player(std::unique_ptr<SoundData> _data)
     : data(std::move(_data))
 {
+    for (auto& p : chPan) {
+		p.mode = -1;
+    }
+
     for (auto& ch : bgmChan) {
         ch.chFlags = CH_INACTIVE | CH_END;
     }
@@ -59,12 +63,17 @@ void Sf3Player::SsBgmOff()
     }
 }
 
-void Sf3Player::SsRequest(int sound)
+void Sf3Player::SsQueue(int sound)
 {
-    SsRequestPan(sound, -1);
+    queue = sound;
 }
 
-void Sf3Player::SsRequestPan(int sound, int pan)
+void Sf3Player::SsRequest(int sound)
+{
+    requestSound(sound, -1);
+}
+
+void Sf3Player::requestSound(int sound, int pan)
 {
     auto it = data->sound.find(sound);
     if (it == data->sound.end()) {
@@ -74,7 +83,8 @@ void Sf3Player::SsRequestPan(int sound, int pan)
 
     Sound& snd = it->second;
     if (snd.flags == 0) {
-		SsBgmOff();
+        std::println("playing bgm");
+        SsBgmOff();
 
         for (int i = 0; i < 16; i++) {
             auto& c = bgmChan[i];
@@ -105,6 +115,10 @@ void Sf3Player::SsRequestPan(int sound, int pan)
         }
 
         bgmOn = 1;
+    } else if ((snd.flags & 0x80) == 0) {
+        std::println("playing multi channel sound?");
+    } else {
+        std::println("playing single channel sound?");
     }
 }
 
@@ -141,6 +155,26 @@ static int envRate(int value, int rate, ushort* table)
     if (!ret) {
         return 1;
     }
+
+    return ret;
+}
+
+int Sf3Player::calcVol(int env, int lfo, s8 unk, sndChannel& ch)
+{
+    int ret;
+    int unk64;
+
+    unk64 = ch.unk64 ? ch.unk64 + 1 : 0;
+    ret = (ch.volume * unk64) << 1;
+    ret = (ret * ((ch.volAdjust + 0x40) & 0x7f)) >> 6;
+    ret = (ret * ((ch.tone->volume + 0x40) & 0x7f)) >> 6;
+    ret = (ret * ((data->volume + 0x40) & 0x7f)) >> 6;
+
+    if (ch.seqFlags == 0) {
+        ret = (ret * ((data->bgmVol + 0x40) & 0x7f)) >> 6;
+    }
+
+	ret = ((ret + 1) * env) >> 15;
 
     return ret;
 }
@@ -187,7 +221,6 @@ void Sf3Player::StepChannel(sndChannel& ch, int idx, bool bgm)
 
     if (ch.duration < 1 && ch.noteActive) {
         ch.noteActive = 0;
-        ch.unk68 = 0;
 
         if (commitRegs) {
             vc.loop = 0;
@@ -209,7 +242,6 @@ void Sf3Player::StepChannel(sndChannel& ch, int idx, bool bgm)
             ch.envState = 3;
         } else {
             ch.unk66 = 0;
-            ch.unk68 = 1;
             ch.envLevel = 0;
             if (commitRegs) {
                 vc.keyOff();
@@ -280,25 +312,36 @@ void Sf3Player::StepChannel(sndChannel& ch, int idx, bool bgm)
 
     // TODO LFO
 
-    // TODO pan
+    // TODO autopan
 
     if (!commitRegs) {
         return;
     }
 
-    int pan;
-    if (bgm || chPan[idx].mode == -1) {
-        pan = ch.tone->pan;
-        if (pan == 0xff) {
-            pan = ch.pan;
-        }
-    } else {
-        pan = chPan[idx].start >> 8;
-        ;
-    }
+    int vol = bgm ? bgmVolume : 0;
 
-    vc.voll = 0x1fff;
-    vc.volr = 0x1fff;
+    if (!stereo) {
+        vc.voll = calcVol(ch.envLevel, ch.tremoloLevel, vol, ch);
+        vc.volr = calcVol(ch.envLevel, ch.tremoloLevel, vol, ch);
+    } else {
+        int pan;
+        if (bgm || chPan[idx].mode == -1) {
+            pan = ch.tone->pan;
+            if (pan == 0xff) {
+                pan = ch.pan;
+            }
+        } else {
+            pan = chPan[idx].val >> 8;
+        }
+
+        if (0x3f < pan) {
+            vc.volr = calcVol(((0x7f - pan) * ch.envLevel) >> 6, ch.tremoloLevel, vol, ch);
+            vc.voll = calcVol(ch.envLevel, ch.tremoloLevel, vol, ch);
+        } else {
+            vc.voll = calcVol(((0x00 - pan) * ch.envLevel) >> 6, ch.tremoloLevel, vol, ch);
+            vc.volr = calcVol(ch.envLevel, ch.tremoloLevel, vol, ch);
+        }
+    }
 
     int pitch = ch.currentPitch + (ch.pitchBend * 0xc00 >> 7) + ((ch.fineTune - 0x40) * 0x100 >> 6);
 
@@ -353,7 +396,7 @@ int Sf3Player::readSeqCtrl(sndChannel& ch, int idx, bool bgm)
 {
     u8 status = *ch.seq_ptr;
 
-    std::println("[ch{}] status: {:x}", idx, status);
+    // std::println("[ch{}] status: {:x}", idx, status);
 
     switch (status) {
     case 0xc0:
@@ -384,17 +427,14 @@ int Sf3Player::readSeqCtrl(sndChannel& ch, int idx, bool bgm)
         break;
     case 0xc6:
         ch.volume = ch.seq_ptr[1];
-        // std::println("volume {:x}", ch.volume);
         ch.seq_ptr += 2;
         break;
     case 0xc7:
         ch.pan = ch.seq_ptr[1];
-        // std::println("pan {:x}", ch.pan);
         ch.seq_ptr += 2;
         break;
     case 0xc8:
         ch.expression = ch.seq_ptr[1];
-        // std::println("expression {:x}", ch.expression);
         ch.seq_ptr += 2;
         break;
     case 0xc9: {
@@ -493,11 +533,11 @@ int Sf3Player::readSeqCtrl(sndChannel& ch, int idx, bool bgm)
         ch.seq_ptr += 2;
         break;
     case 0xde:
-        ch.unk58 = ch.seq_ptr[1];
+        ch.volAdjust = ch.seq_ptr[1];
         ch.seq_ptr += 2;
         break;
     case 0xdf:
-        ch.unk58 += (s8)ch.seq_ptr[1];
+        ch.volAdjust += (s8)ch.seq_ptr[1];
         ch.seq_ptr += 2;
         break;
     case 0xe0:
@@ -535,6 +575,7 @@ int Sf3Player::readSeqCtrl(sndChannel& ch, int idx, bool bgm)
         ch.seq_ptr += 2;
         break;
     case 0xe8:
+        // std::println("[{}] seqStatus[{}] = {}", tick, ch.seq_ptr[1], ch.seq_ptr[2]);
         seqStatus[ch.seq_ptr[1]] = ch.seq_ptr[2];
         ch.seq_ptr += 3;
         break;
@@ -557,10 +598,6 @@ void Sf3Player::StepSequence(sndChannel& ch, int idx, bool bgm)
         return;
     }
 
-    if (idx == 8 && ch.chFlags & CH_END) {
-        std::println("???");
-    }
-
     while (1) {
         u8 status = *ch.seq_ptr;
 
@@ -569,7 +606,7 @@ void Sf3Player::StepSequence(sndChannel& ch, int idx, bool bgm)
             int note = ch.seq_ptr[1] & 0x7f;
             int unkMsb = ch.seq_ptr[1] & 0x80;
 
-            std::println("[ch{}] note: {:x}, vel: {:x}", idx, note, velocity);
+            // std::println("[ch{}] note: {:x}, vel: {:x}", idx, note, velocity);
 
             int res = playNote(ch, note, velocity);
             if (!res) {
@@ -626,7 +663,7 @@ void Sf3Player::StepSequencer()
 
     for (int i = 0; i < 16; i++) {
         if (!(sfxChan[i].seqFlags & 0x80)) {
-            // StepSequence(sfx_chan[i], i, true);
+            StepSequence(sfxChan[i], i, true);
         }
     }
 
@@ -636,7 +673,7 @@ void Sf3Player::StepSequencer()
 
     for (int i = 0; i < 16; i++) {
         if (!(sfxChan[i].seqFlags & 0x80)) {
-            // StepChannel(sfx_chan[i], i, true);
+            StepChannel(sfxChan[i], i, true);
         }
     }
 }
@@ -684,8 +721,15 @@ void Sf3Player::Step(int steps, s16* out)
         sequenceAcc += 59599491;
 
         if (sequenceAcc >= 37286000000) {
+            if (queue != -1 && seqStatus[0] == 2) {
+                seqStatus[0] = 0;
+                SsRequest(queue);
+                queue = -1;
+            }
+
             sequenceAcc -= 37286000000;
             StepSequencer();
+            tick++;
         }
 
         StepSynth(out);

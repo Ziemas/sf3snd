@@ -15,13 +15,14 @@ struct sndChannel {
     int currentPitch;
     int duration; // duration of current note
     int delay; // delay until next sequence event
+	int tremoloLevel;
 
     u8* loopPoint[4];
 
     ushort vibrato;
     ushort tremolo;
     ushort lfoRate;
-    ushort unk58;
+    ushort volAdjust;
     short transpose;
     ushort portamento_unk44;
     ushort portamento_unk46;
@@ -41,7 +42,6 @@ struct sndChannel {
     u8 unk64;
     u8 unk65;
     u8 unk66;
-    u8 unk68;
     u8 unk6a;
     s8 loopCount[4];
     u8 note;
@@ -84,8 +84,8 @@ struct sndVoice {
 };
 
 struct sndPanState {
-    u16 start;
-    s16 end;
+    u16 val;
+    s16 target;
     s16 step;
     s16 mode;
 };
@@ -105,13 +105,14 @@ public:
     static std::unique_ptr<Sf3Player> makePlayer(std::unique_ptr<SoundData> _data);
     void SsBgmOff();
     void SsRequest(int sound);
-    void SsRequestPan(int sound, int pan);
+    void SsQueue(int sound);
 
     void Step(int steps, s16* out);
 
 private:
     void StepSequencer();
     void StepSynth(s16* out);
+    void requestSound(int sound, int pan);
 
     void StepChannel(sndChannel& ch, int idx, bool bgm);
 
@@ -120,6 +121,7 @@ private:
     void StepSequence(sndChannel& ch, int idx, bool bgm);
 
     int calcPitch(int pitch);
+    int calcVol(int env, int lfo, s8 unk, sndChannel& ch);
 
     u64 sequenceAcc = 0;
 
@@ -129,12 +131,16 @@ private:
     sndPanState chPan[16];
     sndVoice voice[16];
 
+	u8 bgmVolume = 0;
     u32 bgmTempo = 0;
     u32 channelTempo[16];
     u8 seqStatus[16];
 
     bool bgmOn = 0;
+    bool stereo = 1;
+	int queue = -1;
 
+	u64 tick = 0;
     std::unique_ptr<SoundData> data;
 };
 
