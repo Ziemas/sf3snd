@@ -159,7 +159,7 @@ static int envRate(int value, int rate, ushort* table)
     return ret;
 }
 
-int Sf3Player::calcVol(int env, int lfo, s8 unk, sndChannel& ch)
+int Sf3Player::calcVol(int env, int lfo, s8 vol, sndChannel& ch)
 {
     int ret;
     int unk64;
@@ -174,8 +174,19 @@ int Sf3Player::calcVol(int env, int lfo, s8 unk, sndChannel& ch)
         ret = (ret * ((data->bgmVol + 0x40) & 0x7f)) >> 6;
     }
 
-	// TODO MORE HERE
-	ret = ((ret + 1) * env) >> 15;
+    ret = ((ret + 1) * env) >> 15;
+
+    if (vol == -0x80) {
+        ret = 0;
+    } else {
+        ret = (ret * lfo >> 16) + (vol << 8) + ret;
+    }
+
+    ret = std::clamp<int>(ret, 0, INT16_MAX);
+
+    if (ch.seqFlags == 0) {
+        // TODO bgm fade vol
+    }
 
     return ret;
 }
@@ -335,11 +346,11 @@ void Sf3Player::StepChannel(sndChannel& ch, int idx, bool bgm)
             pan = chPan[idx].val >> 8;
         }
 
-        if (0x3f < pan) {
+        if (pan > 0x3f) {
             vc.volr = calcVol(((0x7f - pan) * ch.envLevel) >> 6, ch.tremoloLevel, vol, ch);
             vc.voll = calcVol(ch.envLevel, ch.tremoloLevel, vol, ch);
         } else {
-            vc.voll = calcVol(((0x00 - pan) * ch.envLevel) >> 6, ch.tremoloLevel, vol, ch);
+            vc.voll = calcVol((pan * ch.envLevel) >> 6, ch.tremoloLevel, vol, ch);
             vc.volr = calcVol(ch.envLevel, ch.tremoloLevel, vol, ch);
         }
     }
