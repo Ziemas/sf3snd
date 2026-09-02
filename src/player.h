@@ -5,6 +5,14 @@
 
 #include <memory>
 
+enum chFlag {
+    CH_LFO = 0x1,
+    CH_PORTAMENTO = 0x2,
+    CH_DELAY = 0x20,
+    CH_END = 0x40,
+    CH_INACTIVE = 0x80,
+};
+
 struct sndChannel {
     u8* seq_ptr = nullptr;
     u8* sequence = nullptr;
@@ -15,9 +23,9 @@ struct sndChannel {
     int currentPitch = 0;
     int duration = 0; // duration of current note
     int delay = 0; // delay until next sequence event
-	int tremoloLevel = 0;
+    int tremoloLevel = 0;
 
-    u8* loopPoint[4] = {};
+    u8* loopPoint[4] = { nullptr, nullptr, nullptr, nullptr };
 
     ushort vibrato = 0;
     ushort tremolo = 0;
@@ -43,9 +51,9 @@ struct sndChannel {
     u8 unk65 = 0;
     u8 unk66 = 0;
     u8 unk6a = 0;
-    s8 loopCount[4] = {};
+    s8 loopCount[4] = { 0, 0, 0, 0 };
     u8 note = 0;
-    u8 chFlags = 0;
+    u8 chFlags = CH_INACTIVE | CH_END;
     s8 pitchBend = 0;
     s8 fineTune = 0x40;
     u8 bankId = 0;
@@ -55,7 +63,7 @@ struct sndChannel {
     u8 pan = 0x40;
     u8 expression = 0;
     u8 seqFlags = 0;
-	u8 wasHeld = 0;
+    u8 wasHeld = 0;
 };
 
 struct sndVoice {
@@ -91,14 +99,6 @@ struct sndPanState {
     s16 mode;
 };
 
-enum chFlag {
-    CH_LFO = 0x1,
-    CH_PORTAMENTO = 0x2,
-    CH_DELAY = 0x20,
-    CH_END = 0x40,
-    CH_INACTIVE = 0x80,
-};
-
 class Sf3Player {
 public:
     Sf3Player(std::unique_ptr<SoundData> _data);
@@ -132,16 +132,16 @@ private:
     sndPanState chPan[16];
     sndVoice voice[16];
 
-	u8 bgmVolume = 0;
+    u8 bgmVolume = 0;
     u32 bgmTempo = 0;
     u32 channelTempo[16];
     u8 seqStatus[16];
 
     bool bgmOn = 0;
     bool stereo = 1;
-	int queue = -1;
+    int queue = -1;
 
-	u64 tick = 0;
+    u64 tick = 0;
     std::unique_ptr<SoundData> data;
 };
 
