@@ -679,7 +679,7 @@ void Sf3Player::StepSequencer()
 
     for (int i = 0; i < 16; i++) {
         if (!(sfxChan[i].seqFlags & 0x80)) {
-            StepSequence(sfxChan[i], i, true);
+            StepSequence(sfxChan[i], i, false);
         }
     }
 
@@ -689,7 +689,7 @@ void Sf3Player::StepSequencer()
 
     for (int i = 0; i < 16; i++) {
         if (!(sfxChan[i].seqFlags & 0x80)) {
-            StepChannel(sfxChan[i], i, true);
+            StepChannel(sfxChan[i], i, false);
         }
     }
 }
