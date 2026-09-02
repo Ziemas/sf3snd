@@ -6,56 +6,56 @@
 #include <memory>
 
 struct sndChannel {
-    u8* seq_ptr;
-    u8* sequence;
-    Tone* tone;
-    Sample* sample;
+    u8* seq_ptr = nullptr;
+    u8* sequence = nullptr;
+    Tone* tone = nullptr;
+    Sample* sample = nullptr;
 
-    int pitch;
-    int currentPitch;
-    int duration; // duration of current note
-    int delay; // delay until next sequence event
-	int tremoloLevel;
+    int pitch = 0;
+    int currentPitch = 0;
+    int duration = 0; // duration of current note
+    int delay = 0; // delay until next sequence event
+	int tremoloLevel = 0;
 
-    u8* loopPoint[4];
+    u8* loopPoint[4] = {};
 
-    ushort vibrato;
-    ushort tremolo;
-    ushort lfoRate;
-    ushort volAdjust;
-    short transpose;
-    ushort portamento_unk44;
-    ushort portamento_unk46;
-    ushort attackStep;
-    ushort attackTarget;
-    ushort decayStep;
-    ushort sustainStep;
-    ushort sustainTarget;
-    ushort releaseStep;
+    ushort vibrato = 0;
+    ushort tremolo = 0;
+    ushort lfoRate = 0;
+    ushort volAdjust = 0;
+    short transpose = 0;
+    ushort portamento_unk44 = 0;
+    ushort portamento_unk46 = 0;
+    ushort attackStep = 0;
+    ushort attackTarget = 0;
+    ushort decayStep = 0;
+    ushort sustainStep = 0;
+    ushort sustainTarget = 0;
+    ushort releaseStep = 0;
 
     // changed to int to simplify envelope checking
-    int envLevel;
+    int envLevel = 0;
 
-    u8 envState;
-    u8 newNote;
-    u8 noteActive;
-    u8 unk64;
-    u8 unk65;
-    u8 unk66;
-    u8 unk6a;
-    s8 loopCount[4];
-    u8 note;
-    u8 chFlags;
-    s8 pitchBend;
-    s8 fineTune;
-    u8 bankId;
-    u8 progId;
-    s8 volume;
-    u8 velocity;
-    u8 pan;
-    u8 expression;
-    u8 seqFlags;
-	u8 wasHeld;
+    u8 envState = 0;
+    u8 newNote = 0;
+    u8 noteActive = 0;
+    u8 unk64 = 0x40;
+    u8 unk65 = 0;
+    u8 unk66 = 0;
+    u8 unk6a = 0;
+    s8 loopCount[4] = {};
+    u8 note = 0;
+    u8 chFlags = 0;
+    s8 pitchBend = 0;
+    s8 fineTune = 0x40;
+    u8 bankId = 0;
+    u8 progId = 0;
+    s8 volume = 0;
+    u8 velocity = 0;
+    u8 pan = 0x40;
+    u8 expression = 0;
+    u8 seqFlags = 0;
+	u8 wasHeld = 0;
 };
 
 struct sndVoice {

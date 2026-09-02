@@ -108,9 +108,6 @@ void Sf3Player::requestSound(int sound, int pan)
             c.tone = &prog->instrument[0];
             c.sample = &data->sample[prog->instrument[0].sampleIdx];
             c.seqFlags = snd.flags;
-            c.pan = 0x40;
-            c.fineTune = 0x40;
-            c.unk64 = 0x40;
         }
 
         bgmOn = 1;
