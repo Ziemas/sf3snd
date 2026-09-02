@@ -35,7 +35,7 @@ Sf3Player::Sf3Player(std::unique_ptr<SoundData> _data)
     : data(std::move(_data))
 {
     for (auto& p : chPan) {
-		p.mode = -1;
+        p.mode = -1;
     }
 
     for (auto& ch : bgmChan) {
@@ -209,7 +209,6 @@ void Sf3Player::StepChannel(sndChannel& ch, int idx, bool bgm)
         }
 
         vc.keyOff();
-
         return;
     }
 
