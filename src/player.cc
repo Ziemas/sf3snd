@@ -269,7 +269,16 @@ void Sf3Player::StepChannel(sndChannel& ch, int idx, bool bgm)
         }
     }
 
-    // TODO bgm thing here
+    if (bgm && ch.wasHeld && commitRegs) {
+        ch.wasHeld = 0;
+
+        vc.keyOff();
+        vc.sample = &ch.sample->pcm;
+        vc.loopAddr = ch.sample->loopAddr;
+        vc.loop = ch.sample->loopAddr != ch.sample->pcm.size();
+
+        keyOn = 1;
+    }
 
     if (ch.chFlags & CH_END) {
         if (ch.envLevel == 0) {

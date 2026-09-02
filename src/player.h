@@ -55,6 +55,7 @@ struct sndChannel {
     u8 pan;
     u8 expression;
     u8 seqFlags;
+	u8 wasHeld;
 };
 
 struct sndVoice {
