@@ -83,7 +83,6 @@ void Sf3Player::requestSound(int sound, int pan)
 
     Sound& snd = it->second;
     if (snd.flags == 0) {
-        std::println("playing bgm");
         SsBgmOff();
 
         for (int i = 0; i < 16; i++) {
