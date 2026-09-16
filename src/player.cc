@@ -350,12 +350,12 @@ void Sf3Player::StepChannel(sndChannel& ch, int idx, bool bgm)
             pan = chPan[idx].val >> 8;
         }
 
-        if (pan > 0x3f) {
-            vc.volr = calcVol(((0x7f - pan) * ch.envLevel) >> 6, ch.tremoloLevel, vol, ch);
-            vc.voll = calcVol(ch.envLevel, ch.tremoloLevel, vol, ch);
-        } else {
-            vc.voll = calcVol((pan * ch.envLevel) >> 6, ch.tremoloLevel, vol, ch);
+        if (pan >= 0x40) {
+            vc.voll = calcVol(((0x7f - pan) * ch.envLevel) >> 6, ch.tremoloLevel, vol, ch);
             vc.volr = calcVol(ch.envLevel, ch.tremoloLevel, vol, ch);
+        } else {
+            vc.voll = calcVol(ch.envLevel, ch.tremoloLevel, vol, ch);
+            vc.volr = calcVol((pan * ch.envLevel) >> 6, ch.tremoloLevel, vol, ch);
         }
     }
 
