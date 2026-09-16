@@ -117,6 +117,14 @@ static int queueSound(int ac, char** tokens)
     return 0;
 }
 
+static int stopSounds(int ac, char** tokens) {
+    SDL_LockMutex(soundLock);
+    player->SsBgmOff();
+    SDL_UnlockMutex(soundLock);
+
+	return 0;
+}
+
 void SDL_CB(void* user, SDL_AudioStream* stream, int additional_amount, int total_amount)
 {
     (void)total_amount;
@@ -182,6 +190,7 @@ int main(int argc, char** argv)
     commands["play"] = playSound;
     commands["p"] = playSound;
     commands["q"] = queueSound;
+    commands["s"] = stopSounds;
 
     SDL_LockMutex(soundLock);
     //player->SsRequest(3);
