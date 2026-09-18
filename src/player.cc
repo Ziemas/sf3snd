@@ -158,10 +158,13 @@ static int envRate(int value, int rate, ushort* table)
 int Sf3Player::calcVol(int env, int lfo, s8 vol, sndChannel& ch)
 {
     int ret;
-    int unk64;
+    int expression;
 
-    unk64 = ch.unk64 ? ch.unk64 + 1 : 0;
-    ret = (ch.volume * unk64) << 1;
+    expression = ch.expression ? ch.expression + 1 : 0;
+
+	// multiply and shift to 16 bit volume
+    ret = (ch.volume * expression) << 1;
+
     ret = (ret * ((ch.volAdjust + 0x40) & 0x7f)) >> 6;
     ret = (ret * ((ch.tone->volume + 0x40) & 0x7f)) >> 6;
     ret = (ret * ((data->volume + 0x40) & 0x7f)) >> 6;

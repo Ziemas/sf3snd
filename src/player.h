@@ -47,7 +47,7 @@ struct sndChannel {
     u8 envState = 0;
     u8 newNote = 0;
     u8 noteActive = 0;
-    u8 unk64 = 0x40;
+    u8 expression = 0x40;
     u8 unk65 = 0;
     u8 unk66 = 0;
     u8 unk6a = 0;
@@ -61,7 +61,6 @@ struct sndChannel {
     s8 volume = 0;
     u8 velocity = 0;
     u8 pan = 0x40;
-    u8 expression = 0;
     u8 seqFlags = 0;
     u8 wasHeld = 0;
 };
