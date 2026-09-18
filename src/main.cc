@@ -41,14 +41,13 @@ static int command_run(char* s)
     return 0;
 }
 
-static void command_line(char* line)
+static int command_line(char* line)
 {
     char* hist_expand;
     int ret;
 
     if (!line) {
-        exit(0);
-        return;
+        return -1;
     }
 
     if (!line[0]) {
@@ -65,6 +64,8 @@ static void command_line(char* line)
 
 exit:
     free(line);
+
+    return 0;
 }
 
 static int command_loop()
@@ -73,7 +74,9 @@ static int command_loop()
 
     while (true) {
         char* line = readline(prompt.c_str());
-        command_line(line);
+        if (command_line(line) < 0) {
+            return -1;
+        }
     }
 }
 
@@ -117,12 +120,13 @@ static int queueSound(int ac, char** tokens)
     return 0;
 }
 
-static int stopSounds(int ac, char** tokens) {
+static int stopSounds(int ac, char** tokens)
+{
     SDL_LockMutex(soundLock);
     player->SsBgmOff();
     SDL_UnlockMutex(soundLock);
 
-	return 0;
+    return 0;
 }
 
 void SDL_CB(void* user, SDL_AudioStream* stream, int additional_amount, int total_amount)
@@ -153,7 +157,6 @@ int startAudio()
     SDL_Init(SDL_INIT_AUDIO);
 
     soundLock = SDL_CreateMutex();
-
 
     SDL_AudioSpec spec;
 
@@ -197,6 +200,11 @@ int main(int argc, char** argv)
     SDL_UnlockMutex(soundLock);
 
     command_loop();
+
+    SDL_PauseAudioStreamDevice(stream);
+    SDL_DestroyAudioStream(stream);
+
+    SDL_Quit();
 
     return 0;
 }
