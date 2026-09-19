@@ -21,8 +21,8 @@ struct sndChannel {
 
     int pitch = 0;
     int currentPitch = 0;
-    int duration = 0; // duration of current note
-    int delay = 0; // delay until next sequence event
+    double duration = 0; // duration of current note
+    double delay = 0; // delay until next sequence event
     int tremoloLevel = 0;
 
     u8* loopPoint[4] = { nullptr, nullptr, nullptr, nullptr };
@@ -136,7 +136,7 @@ private:
     sndVoice voice[16];
 
     u8 bgmVolume = 0;
-    u32 bgmTempo = 0;
+    double bgmTempo = 0;
     u32 channelTempo[16];
     u8 seqStatus[16];
 

@@ -226,11 +226,11 @@ void Sf3Player::StepChannel(sndChannel& ch, int idx, bool bgm)
         }
     }
 
-    if (ch.delay < 1) {
+    if (ch.delay < 1.0) {
         ch.chFlags &= ~CH_DELAY;
     }
 
-    if (ch.duration < 1 && ch.noteActive) {
+    if (ch.duration < 1.0 && ch.noteActive) {
         ch.noteActive = 0;
 
         if (commitRegs) {
@@ -296,38 +296,40 @@ void Sf3Player::StepChannel(sndChannel& ch, int idx, bool bgm)
 
     // TODO portamento
 
-    switch (ch.envState) {
-    case 1:
-        ch.envLevel += ch.attackStep;
-        if (ch.envLevel >= ch.attackTarget) {
-            ch.envLevel = ch.attackTarget;
-            ch.envState = 2;
-        }
-        break;
-    case 2:
-        ch.envLevel -= ch.decayStep;
-        if (ch.envLevel < ch.sustainTarget) {
-            ch.envLevel = ch.sustainTarget;
-            ch.envState = 3;
-        }
-        break;
-    case 3:
-        ch.envLevel -= ch.sustainStep;
-        if (ch.envLevel <= 0) {
-            ch.envLevel = 0;
-            ch.envState = 0;
-        }
-        break;
-    case 4:
-        ch.envLevel -= ch.releaseStep;
-        if (ch.envLevel <= 0) {
-            ch.envLevel = 0;
-            ch.envState = 0;
-            if (bgm && commitRegs) {
-                vc.keyOff();
+    if ((tick & 3) == 0) {
+        switch (ch.envState) {
+        case 1:
+            ch.envLevel += ch.attackStep;
+            if (ch.envLevel >= ch.attackTarget) {
+                ch.envLevel = ch.attackTarget;
+                ch.envState = 2;
             }
+            break;
+        case 2:
+            ch.envLevel -= ch.decayStep;
+            if (ch.envLevel < ch.sustainTarget) {
+                ch.envLevel = ch.sustainTarget;
+                ch.envState = 3;
+            }
+            break;
+        case 3:
+            ch.envLevel -= ch.sustainStep;
+            if (ch.envLevel <= 0) {
+                ch.envLevel = 0;
+                ch.envState = 0;
+            }
+            break;
+        case 4:
+            ch.envLevel -= ch.releaseStep;
+            if (ch.envLevel <= 0) {
+                ch.envLevel = 0;
+                ch.envState = 0;
+                if (bgm && commitRegs) {
+                    vc.keyOff();
+                }
+            }
+            break;
         }
-        break;
     }
 
     // TODO LFO
@@ -423,7 +425,7 @@ int Sf3Player::readSeqCtrl(sndChannel& ch, int idx, bool bgm)
         break;
     case 0xc1:
         if (bgm) {
-            bgmTempo = (ch.seq_ptr[1] << 8) + ch.seq_ptr[2];
+            bgmTempo = (double)((ch.seq_ptr[1] << 8) + ch.seq_ptr[2]) / 4;
         } else {
             channelTempo[idx] = (ch.seq_ptr[1] << 8) + ch.seq_ptr[2];
         }
@@ -742,7 +744,7 @@ void Sf3Player::StepSynth(s16* out)
 void Sf3Player::Step(int steps, s16* out)
 {
     while (steps) {
-        sequenceAcc += 59599491;
+        sequenceAcc += 59599491 * 4;
 
         if (sequenceAcc >= 37286000000) {
             if (queue != -1 && seqStatus[0] == 2) {
