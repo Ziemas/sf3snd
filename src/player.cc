@@ -724,7 +724,7 @@ void Sf3Player::StepSynth(s16* out)
 
         if (v.pos >= v.sample->size()) {
             if (v.loop) {
-                v.pos = 0;
+                v.pos = v.loopAddr;
             } else {
                 v.key = 0;
             }
