@@ -601,6 +601,17 @@ int Sf3Player::readSeqCtrl(sndChannel& ch, int idx, bool bgm)
         break;
     case 0xff:
         ch.chFlags |= CH_END;
+        if (!bgm && !(bgmChan[idx].chFlags & CH_INACTIVE)) {
+            bgmChan[idx].wasHeld = 1;
+
+			// Why would the top bit mean anything special??
+            if ((bgmChan[idx].tone->sampleIdx & 0x8000) == 0) {
+                bgmChan[idx].envLevel = 0;
+                bgmChan[idx].envState = 0;
+            }
+        }
+
+        chPan[idx].mode = -1;
         return -1;
         break;
     default:
