@@ -707,28 +707,32 @@ void Sf3Player::StepSynth(s16* out)
             continue;
         }
 
-        int size = v.sample->size();
+        v.counter += v.pitch;
+        int steps = v.counter >> 12;
+        v.counter &= 0xfff;
 
-        int s1 = (*v.sample)[v.pos] << 8;
-        int s2 = (*v.sample)[(v.pos + 1) % size] << 8;
+        while (steps--) {
+            v.pos++;
+
+            if (v.pos >= v.sample->size()) {
+                if (v.loop) {
+                    v.pos = v.loopAddr;
+                } else {
+                    v.key = 0;
+                    break;
+                }
+            }
+
+            v.s[1] = v.s[0];
+            v.s[0] = (*v.sample)[v.pos] << 8;
+        }
 
         // linear interpolation, figure out if people like it i guess
-        int sample = (s1 * (0xfff - v.counter) + s2 * v.counter) >> 12;
+        int sample = (v.s[1] * (0xfff - v.counter) + v.s[0] * v.counter) >> 12;
+        // int sample = v.s[0];
 
         accl += (sample * v.voll) >> 15;
         accr += (sample * v.volr) >> 15;
-
-        v.counter += v.pitch;
-        v.pos += v.counter >> 12;
-        v.counter &= 0xfff;
-
-        if (v.pos >= v.sample->size()) {
-            if (v.loop) {
-                v.pos = v.loopAddr;
-            } else {
-                v.key = 0;
-            }
-        }
     }
 
     out[0] = std::clamp(accl, -0x8000, 0x7fff);

@@ -78,8 +78,11 @@ struct sndVoice {
     bool key;
     bool loop;
 
+	s32 s[2];
+
     void keyOn()
     {
+		s[0] = s[1] = 0;
         counter = 0;
         pos = 0;
         key = 1;
