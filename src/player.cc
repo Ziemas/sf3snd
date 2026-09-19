@@ -110,6 +110,7 @@ void Sf3Player::requestSound(int sound, int pan)
             c.seqFlags = snd.flags;
         }
 
+		bgmTempo = 0;
         bgmOn = 1;
     } else if ((snd.flags & 0x80) == 0) {
         std::println("playing multi channel sound?");
