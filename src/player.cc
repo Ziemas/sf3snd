@@ -110,7 +110,7 @@ void Sf3Player::requestSound(int sound, int pan)
             c.seqFlags = snd.flags;
         }
 
-		bgmTempo = 0;
+        bgmTempo = 0;
         bgmOn = 1;
     } else if ((snd.flags & 0x80) == 0) {
         std::println("playing multi channel sound?");
@@ -163,7 +163,7 @@ int Sf3Player::calcVol(int env, int lfo, s8 vol, sndChannel& ch)
 
     expression = ch.expression ? ch.expression + 1 : 0;
 
-	// multiply and shift to 16 bit volume
+    // multiply and shift to 16 bit volume
     ret = (ch.volume * expression) << 1;
 
     ret = (ret * ((ch.volAdjust + 0x40) & 0x7f)) >> 6;
@@ -735,8 +735,8 @@ void Sf3Player::StepSynth(s16* out)
         accr += (sample * v.volr) >> 15;
     }
 
-    out[0] = std::clamp(accl, -0x8000, 0x7fff);
-    out[1] = std::clamp(accr, -0x8000, 0x7fff);
+    out[0] = std::clamp(accl, INT16_MIN, INT16_MAX);
+    out[1] = std::clamp(accr, INT16_MIN, INT16_MAX);
 }
 
 void Sf3Player::Step(int steps, s16* out)
