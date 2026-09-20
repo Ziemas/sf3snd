@@ -96,7 +96,7 @@ struct sndVoice {
 };
 
 struct sndPanState {
-    u16 val;
+    s32 val;
     s16 target;
     s16 step;
     s16 mode;

@@ -332,7 +332,20 @@ void Sf3Player::StepChannel(sndChannel& ch, int idx, bool bgm)
 
     // TODO LFO
 
-    // TODO autopan
+    // Autopan
+    if (!bgm && chPan[idx].mode != -1 && chPan[idx].mode != 0) {
+        chPan[idx].val += chPan[idx].step;
+
+        int posDir = chPan[idx].step >= 0 ? 1 : 0;
+        if ((!posDir && chPan[idx].val < chPan[idx].target) || (posDir && chPan[idx].val > chPan[idx].target)) {
+            chPan[idx].val = chPan[idx].target;
+            chPan[idx].mode = 0;
+
+            if (chPan[idx].mode == 1) {
+                ch.chFlags |= CH_END;
+            }
+        }
+    }
 
     if (!commitRegs) {
         return;
