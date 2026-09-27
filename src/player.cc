@@ -246,10 +246,10 @@ void Sf3Player::StepChannel(sndChannel& ch, int idx, bool bgm)
 
     if (ch.newNote) {
         ch.newNote = 0;
-        // TODO
-        ch.currentPitch = ch.pitch;
+        ch.currentPitch = ch.portamento_target;
+        ch.portamento_target = ch.pitch;
+
         if (ch.unk66 == 0) {
-            // TODO
             ch.envState = 3;
         } else {
             ch.unk66 = 0;
@@ -259,17 +259,28 @@ void Sf3Player::StepChannel(sndChannel& ch, int idx, bool bgm)
                 vc.sample = &ch.sample->pcm;
                 vc.loopAddr = ch.sample->loopAddr;
                 vc.loop = ch.sample->loopAddr != ch.sample->pcm.size();
-                keyOn = 1;
             }
-
-            // TODO
 
             ch.envState = 1;
 
-            // TODO
+            if (ch.chFlags & CH_LFO) {
+                ch.lfoFlag &= ~(1 | 2);
+                ch.vibratoLevel = 0;
+                ch.tremoloLevel = 0;
+            }
         }
+
+        if (ch.portamento_step == 0) {
+            ch.chFlags &= ~CH_PORTAMENTO;
+            ch.currentPitch = ch.portamento_target;
+        } else {
+            ch.chFlags |= CH_PORTAMENTO;
+        }
+
+        keyOn = 1;
     }
 
+    // Recover from a sound effect overriding one the BGM channels
     if (bgm && ch.wasHeld && commitRegs) {
         ch.wasHeld = 0;
 
@@ -294,8 +305,24 @@ void Sf3Player::StepChannel(sndChannel& ch, int idx, bool bgm)
         }
     }
 
-    // TODO portamento
+    // Portamento
+    if ((ch.chFlags & CH_PORTAMENTO) && ch.currentPitch != ch.portamento_target) {
+        if (ch.currentPitch > ch.portamento_target) {
+            ch.currentPitch -= ch.portamento_step;
 
+            if (ch.currentPitch <= ch.portamento_target) {
+                ch.currentPitch = ch.portamento_target;
+            }
+        } else {
+            ch.currentPitch += ch.portamento_step;
+
+            if (ch.currentPitch >= ch.portamento_target) {
+                ch.currentPitch = ch.portamento_target;
+            }
+        }
+    }
+
+    // ADSR envelope
     switch (ch.envState) {
     case 1:
         ch.envLevel += ch.attackStep;
@@ -471,16 +498,14 @@ int Sf3Player::readSeqCtrl(sndChannel& ch, int idx, bool bgm)
         ch.seq_ptr += 2;
         break;
     case 0xc9: {
-        ch.portamento_unk44 = ch.portamento_unk46;
         u8 value = ch.seq_ptr[1];
         ch.seq_ptr += 2;
 
         if (value) {
-            ch.portamento_unk46 = (value + 1) * 2;
-            ch.portamento_unk44 = ch.portamento_unk46;
+            ch.portamento_step = (value + 1) * 2;
         } else {
             ch.chFlags &= ~CH_PORTAMENTO;
-            ch.portamento_unk46 = 0;
+            ch.portamento_step = 0;
         }
     } break;
     case 0xca:
