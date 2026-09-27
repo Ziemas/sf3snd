@@ -212,12 +212,14 @@ void Sf3Player::StepChannel(sndChannel& ch, int idx, bool bgm)
         return;
     }
 
+    // Tick down sequencer delay
     if (bgm) {
         ch.delay -= bgmTempo;
     } else {
         ch.delay -= channelTempo[idx];
     }
 
+    // Tick down note duration
     if (ch.noteActive) {
         if (bgm) {
             ch.duration -= bgmTempo;
@@ -357,6 +359,7 @@ void Sf3Player::StepChannel(sndChannel& ch, int idx, bool bgm)
         break;
     }
 
+    // LFO
     // TODO LFO
 
     // Autopan
@@ -532,6 +535,7 @@ int Sf3Player::readSeqCtrl(sndChannel& ch, int idx, bool bgm)
     case 0xcd:
         if (ch.unk65) {
             ch.seq_ptr += (ch.seq_ptr[1] << 8) + ch.seq_ptr[2];
+            ch.unk65 = 1;
         }
         ch.seq_ptr += 3;
         break;
@@ -642,7 +646,7 @@ int Sf3Player::readSeqCtrl(sndChannel& ch, int idx, bool bgm)
         if (!bgm && !(bgmChan[idx].chFlags & CH_INACTIVE)) {
             bgmChan[idx].wasHeld = 1;
 
-			// Why would the top bit mean anything special??
+            // Why would the top bit mean anything special??
             if ((bgmChan[idx].tone->sampleIdx & 0x8000) == 0) {
                 bgmChan[idx].envLevel = 0;
                 bgmChan[idx].envState = 0;
@@ -778,7 +782,6 @@ void Sf3Player::StepSynth(s16* out)
 
         // linear interpolation, figure out if people like it i guess
         int sample = (v.s[1] * (0xfff - v.counter) + v.s[0] * v.counter) >> 12;
-        // int sample = v.s[0];
 
         accl += (sample * v.voll) >> 15;
         accr += (sample * v.volr) >> 15;

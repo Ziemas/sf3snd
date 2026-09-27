@@ -25,6 +25,7 @@ struct sndChannel {
     int duration = 0; // duration of current note
     int delay = 0; // delay until next sequence event
     int tremoloLevel = 0;
+    int vibratoLevel = 0;
 
     u8* loopPoint[4] = { nullptr, nullptr, nullptr, nullptr };
 
@@ -61,6 +62,7 @@ struct sndChannel {
     s8 volume = 0;
     u8 velocity = 0;
     u8 pan = 0x40;
+	u8 lfoFlag = 0;
     u8 seqFlags = 0;
     u8 wasHeld = 0;
 };
