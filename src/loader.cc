@@ -4,6 +4,7 @@
 
 #include <cstdio>
 #include <memory>
+#include <print>
 
 static void readSamples(Sample& s, BinaryReader& r, std::span<u8> data)
 {

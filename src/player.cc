@@ -1,4 +1,6 @@
 #include "player.h"
+#include "tables.h"
+
 #include <print>
 
 // Delay is stored in sort of inverse-vlq
@@ -132,7 +134,7 @@ int Sf3Player::calcPitch(int pitch)
         unk -= 1;
     }
 
-    ret = data->freq_table[pitch];
+    ret = freq_table[pitch];
 
     for (; 0 < unk; unk -= 1) {
         ret <<= 1;
@@ -145,7 +147,7 @@ int Sf3Player::calcPitch(int pitch)
     return ret - 1;
 }
 
-static int envRate(int value, int rate, ushort* table)
+static int envRate(int value, int rate, const ushort* table)
 {
     int ret = (table[rate & 0xff] + 1) * (value & 0xffff) >> 0x10;
 
@@ -242,7 +244,7 @@ void Sf3Player::StepChannel(sndChannel& ch, int idx, bool bgm)
         // Go into release
         if (ch.envState != 4) {
             ch.envState = 4;
-            ch.releaseStep = envRate(ch.envLevel, ch.tone->releaseRate, data->dr_table);
+            ch.releaseStep = envRate(ch.envLevel, ch.tone->releaseRate, dr_table);
         }
     }
 
@@ -447,10 +449,10 @@ int Sf3Player::playNote(sndChannel& ch, int note, int velocity)
     ch.pitch = ((note - ch.sample->key) + ch.transpose + 7) * 0x100 + 0x80 + ch.tone->fineTune;
     ch.attackTarget = velocity << 8;
     ch.sustainTarget = ((t->sustainLevel + 1) * ch.attackTarget) >> 7;
-    ch.attackStep = envRate(ch.attackTarget, t->attackRate, data->ar_table);
+    ch.attackStep = envRate(ch.attackTarget, t->attackRate, ar_table);
     ch.attackStep = ch.attackStep * (ch.velocity + 1) >> 7;
-    ch.decayStep = envRate(ch.attackTarget, t->decayRate, data->dr_table);
-    ch.sustainStep = envRate(ch.sustainTarget, t->sustainRate, data->dr_table);
+    ch.decayStep = envRate(ch.attackTarget, t->decayRate, dr_table);
+    ch.sustainStep = envRate(ch.sustainTarget, t->sustainRate, dr_table);
 
     return 0;
 }
@@ -485,7 +487,7 @@ int Sf3Player::readSeqCtrl(sndChannel& ch, int idx, bool bgm)
         ch.seq_ptr += 2;
         break;
     case 0xc5:
-        ch.vibrato = data->vibrato_table[ch.seq_ptr[1]];
+        ch.vibrato = vibrato_table[ch.seq_ptr[1]];
         ch.seq_ptr += 2;
         break;
     case 0xc6:
@@ -612,11 +614,11 @@ int Sf3Player::readSeqCtrl(sndChannel& ch, int idx, bool bgm)
         ch.seq_ptr += 2;
         break;
     case 0xe1:
-        ch.lfoRate = data->tremolo_table[ch.seq_ptr[1]];
+        ch.lfoRate = tremolo_table[ch.seq_ptr[1]];
         ch.seq_ptr += 2;
         break;
     case 0xe2:
-        ch.tremolo = data->tremolo_table[ch.seq_ptr[1]];
+        ch.tremolo = tremolo_table[ch.seq_ptr[1]];
         ch.seq_ptr += 2;
         break;
     case 0xe3:
