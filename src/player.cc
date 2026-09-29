@@ -362,7 +362,37 @@ void Sf3Player::StepChannel(sndChannel& ch, int idx, bool bgm)
     }
 
     // LFO
-    // TODO LFO
+    if (ch.lfoRate) {
+        if (ch.vibrato != 0) {
+            int step = ch.vibrato * ch.lfoRate;
+            s64 max = ch.vibrato << 16;
+
+            if (ch.lfoFlag & 1) {
+                if (ch.vibratoLevel >= step - max) {
+					ch.vibratoLevel -= step;
+                } else {
+					ch.vibratoLevel = -max;
+					ch.lfoFlag &= ~1;
+				}
+            } else {
+                if (ch.vibratoLevel < max - step) {
+					ch.vibratoLevel += step;
+                } else {
+					ch.vibratoLevel = max;
+					ch.lfoFlag |= 1;
+				}
+            }
+        }
+
+        if (ch.tremolo != 0) {
+            if (!(ch.lfoFlag & 2)) {
+            } else {
+            }
+        }
+    } else {
+        ch.vibratoLevel = 0;
+        ch.tremoloLevel = 0;
+    }
 
     // Autopan
     if (!bgm && chPan[idx].mode != -1 && chPan[idx].mode != 0) {
