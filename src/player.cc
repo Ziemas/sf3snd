@@ -98,10 +98,10 @@ void Sf3Player::requestSound(int sound, int pan)
 
             c = {};
 
-            c.seq_ptr = t.data();
+            c.seqPtr = t.data();
 
-            auto [len, delay] = readDelay(c.seq_ptr);
-            c.seq_ptr += len;
+            auto [len, delay] = readDelay(c.seqPtr);
+            c.seqPtr += len;
 
             c.sequence = t.data();
             c.delay = delay << 8;
@@ -250,8 +250,8 @@ void Sf3Player::StepChannel(sndChannel& ch, int idx, bool bgm)
 
     if (ch.newNote) {
         ch.newNote = 0;
-        ch.currentPitch = ch.portamento_target;
-        ch.portamento_target = ch.pitch;
+        ch.currentPitch = ch.portamentoTarget;
+        ch.portamentoTarget = ch.pitch;
 
         if (ch.unk66 == 0) {
             ch.envState = 3;
@@ -274,9 +274,9 @@ void Sf3Player::StepChannel(sndChannel& ch, int idx, bool bgm)
             }
         }
 
-        if (ch.portamento_step == 0) {
+        if (ch.portamentoStep == 0) {
             ch.chFlags &= ~CH_PORTAMENTO;
-            ch.currentPitch = ch.portamento_target;
+            ch.currentPitch = ch.portamentoTarget;
         } else {
             ch.chFlags |= CH_PORTAMENTO;
         }
@@ -310,18 +310,18 @@ void Sf3Player::StepChannel(sndChannel& ch, int idx, bool bgm)
     }
 
     // Portamento
-    if ((ch.chFlags & CH_PORTAMENTO) && ch.currentPitch != ch.portamento_target) {
-        if (ch.currentPitch > ch.portamento_target) {
-            ch.currentPitch -= ch.portamento_step;
+    if ((ch.chFlags & CH_PORTAMENTO) && ch.currentPitch != ch.portamentoTarget) {
+        if (ch.currentPitch > ch.portamentoTarget) {
+            ch.currentPitch -= ch.portamentoStep;
 
-            if (ch.currentPitch <= ch.portamento_target) {
-                ch.currentPitch = ch.portamento_target;
+            if (ch.currentPitch <= ch.portamentoTarget) {
+                ch.currentPitch = ch.portamentoTarget;
             }
         } else {
-            ch.currentPitch += ch.portamento_step;
+            ch.currentPitch += ch.portamentoStep;
 
-            if (ch.currentPitch >= ch.portamento_target) {
-                ch.currentPitch = ch.portamento_target;
+            if (ch.currentPitch >= ch.portamentoTarget) {
+                ch.currentPitch = ch.portamentoTarget;
             }
         }
     }
@@ -459,7 +459,7 @@ int Sf3Player::playNote(sndChannel& ch, int note, int velocity)
 
 int Sf3Player::readSeqCtrl(sndChannel& ch, int idx, bool bgm)
 {
-    u8 status = *ch.seq_ptr;
+    u8 status = *ch.seqPtr;
 
     // std::println("[ch{}] status: {:x}", idx, status);
 
@@ -468,86 +468,86 @@ int Sf3Player::readSeqCtrl(sndChannel& ch, int idx, bool bgm)
         break;
     case 0xc1:
         if (bgm) {
-            bgmTempo = (ch.seq_ptr[1] << 8) + ch.seq_ptr[2];
+            bgmTempo = (ch.seqPtr[1] << 8) + ch.seqPtr[2];
         } else {
-            channelTempo[idx] = (ch.seq_ptr[1] << 8) + ch.seq_ptr[2];
+            channelTempo[idx] = (ch.seqPtr[1] << 8) + ch.seqPtr[2];
         }
-        ch.seq_ptr += 3;
+        ch.seqPtr += 3;
         break;
     case 0xc2:
-        ch.bankId = ch.seq_ptr[1] & 0xf;
-        ch.seq_ptr += 2;
+        ch.bankId = ch.seqPtr[1] & 0xf;
+        ch.seqPtr += 2;
         break;
     case 0xc3:
-        ch.pitchBend = ch.seq_ptr[1];
-        ch.seq_ptr += 2;
+        ch.pitchBend = ch.seqPtr[1];
+        ch.seqPtr += 2;
         break;
     case 0xc4:
-        ch.progId = ch.seq_ptr[1] & 0x7f;
-        ch.seq_ptr += 2;
+        ch.progId = ch.seqPtr[1] & 0x7f;
+        ch.seqPtr += 2;
         break;
     case 0xc5:
-        ch.vibrato = vibrato_table[ch.seq_ptr[1]];
-        ch.seq_ptr += 2;
+        ch.vibrato = vibrato_table[ch.seqPtr[1]];
+        ch.seqPtr += 2;
         break;
     case 0xc6:
-        ch.volume = ch.seq_ptr[1];
-        ch.seq_ptr += 2;
+        ch.volume = ch.seqPtr[1];
+        ch.seqPtr += 2;
         break;
     case 0xc7:
-        ch.pan = ch.seq_ptr[1];
-        ch.seq_ptr += 2;
+        ch.pan = ch.seqPtr[1];
+        ch.seqPtr += 2;
         break;
     case 0xc8:
-        ch.expression = ch.seq_ptr[1];
-        ch.seq_ptr += 2;
+        ch.expression = ch.seqPtr[1];
+        ch.seqPtr += 2;
         break;
     case 0xc9: {
-        u8 value = ch.seq_ptr[1];
-        ch.seq_ptr += 2;
+        u8 value = ch.seqPtr[1];
+        ch.seqPtr += 2;
 
         if (value) {
-            ch.portamento_step = (value + 1) * 2;
+            ch.portamentoStep = (value + 1) * 2;
         } else {
             ch.chFlags &= ~CH_PORTAMENTO;
-            ch.portamento_step = 0;
+            ch.portamentoStep = 0;
         }
     } break;
     case 0xca:
         if (ch.unk65 == 0) {
-            ch.seq_ptr = ch.sequence;
+            ch.seqPtr = ch.sequence;
             ch.unk65 = 1;
         }
-        ch.seq_ptr += 1;
+        ch.seqPtr += 1;
         break;
     case 0xcb:
         if (ch.unk65) {
             ch.chFlags |= CH_END;
             return -1;
         }
-        ch.seq_ptr += 1;
+        ch.seqPtr += 1;
         break;
     case 0xcc:
         if (ch.unk65 == 0) {
-            ch.seq_ptr += (ch.seq_ptr[1] << 8) + ch.seq_ptr[2];
+            ch.seqPtr += (ch.seqPtr[1] << 8) + ch.seqPtr[2];
             ch.unk65 = 1;
         }
-        ch.seq_ptr += 3;
+        ch.seqPtr += 3;
         break;
     case 0xcd:
         if (ch.unk65) {
-            ch.seq_ptr += (ch.seq_ptr[1] << 8) + ch.seq_ptr[2];
+            ch.seqPtr += (ch.seqPtr[1] << 8) + ch.seqPtr[2];
             ch.unk65 = 1;
         }
-        ch.seq_ptr += 3;
+        ch.seqPtr += 3;
         break;
     case 0xce: {
-        short offset = (ch.seq_ptr[1] << 8) + ch.seq_ptr[2];
-        ch.seq_ptr += 3;
-        ch.seq_ptr += offset;
+        short offset = (ch.seqPtr[1] << 8) + ch.seqPtr[2];
+        ch.seqPtr += 3;
+        ch.seqPtr += offset;
     } break;
     case 0xcf:
-        ch.seq_ptr = bgmChan[ch.seq_ptr[1]].sequence;
+        ch.seqPtr = bgmChan[ch.seqPtr[1]].sequence;
         break;
     case 0xd0:
     case 0xd1:
@@ -555,8 +555,8 @@ int Sf3Player::readSeqCtrl(sndChannel& ch, int idx, bool bgm)
     case 0xd3: {
         // loop start
         int idx = status - 0xd0;
-        ch.loopPoint[idx] = ch.seq_ptr + 1;
-        ch.seq_ptr += 1;
+        ch.loopPoint[idx] = ch.seqPtr + 1;
+        ch.seqPtr += 1;
     } break;
     case 0xd4:
     case 0xd5:
@@ -566,15 +566,15 @@ int Sf3Player::readSeqCtrl(sndChannel& ch, int idx, bool bgm)
         int idx = status - 0xd4;
 
         if (ch.loopCount[idx] == 0) {
-            ch.loopCount[idx] = ch.seq_ptr[1];
+            ch.loopCount[idx] = ch.seqPtr[1];
         } else {
             ch.loopCount[idx]--;
             if (ch.loopCount[idx] == 0) {
-                ch.seq_ptr += 2;
+                ch.seqPtr += 2;
                 break;
             }
         }
-        ch.seq_ptr = ch.loopPoint[idx];
+        ch.seqPtr = ch.loopPoint[idx];
     } break;
     case 0xd8:
     case 0xd9:
@@ -583,65 +583,65 @@ int Sf3Player::readSeqCtrl(sndChannel& ch, int idx, bool bgm)
         int idx = status - 0xd8;
         if (ch.loopCount[idx] == 1) {
             ch.loopCount[idx] = 0;
-            ch.seq_ptr += (ch.seq_ptr[1] << 8) + ch.seq_ptr[2];
+            ch.seqPtr += (ch.seqPtr[1] << 8) + ch.seqPtr[2];
         }
 
-        ch.seq_ptr += 3;
+        ch.seqPtr += 3;
     } break;
     case 0xdc:
-        ch.transpose = (s8)ch.seq_ptr[1];
-        ch.seq_ptr += 2;
+        ch.transpose = (s8)ch.seqPtr[1];
+        ch.seqPtr += 2;
         break;
     case 0xdd:
-        ch.transpose += (s8)ch.seq_ptr[1];
-        ch.seq_ptr += 2;
+        ch.transpose += (s8)ch.seqPtr[1];
+        ch.seqPtr += 2;
         break;
     case 0xde:
-        ch.volAdjust = ch.seq_ptr[1];
-        ch.seq_ptr += 2;
+        ch.volAdjust = ch.seqPtr[1];
+        ch.seqPtr += 2;
         break;
     case 0xdf:
-        ch.volAdjust += (s8)ch.seq_ptr[1];
-        ch.seq_ptr += 2;
+        ch.volAdjust += (s8)ch.seqPtr[1];
+        ch.seqPtr += 2;
         break;
     case 0xe0:
-        if (ch.seq_ptr[1]) {
+        if (ch.seqPtr[1]) {
             ch.chFlags |= CH_LFO;
         } else {
             ch.chFlags &= ~CH_LFO;
         }
 
-        ch.seq_ptr += 2;
+        ch.seqPtr += 2;
         break;
     case 0xe1:
-        ch.lfoRate = tremolo_table[ch.seq_ptr[1]];
-        ch.seq_ptr += 2;
+        ch.lfoRate = tremolo_table[ch.seqPtr[1]];
+        ch.seqPtr += 2;
         break;
     case 0xe2:
-        ch.tremolo = tremolo_table[ch.seq_ptr[1]];
-        ch.seq_ptr += 2;
+        ch.tremolo = tremolo_table[ch.seqPtr[1]];
+        ch.seqPtr += 2;
         break;
     case 0xe3:
-        ch.seqFlags = ch.seq_ptr[1];
-        ch.seq_ptr += 2;
+        ch.seqFlags = ch.seqPtr[1];
+        ch.seqPtr += 2;
         break;
     case 0xe4:
     case 0xe5:
         // nop
-        ch.seq_ptr += 3;
+        ch.seqPtr += 3;
         break;
     case 0xe6:
         // nop
-        ch.seq_ptr += 2;
+        ch.seqPtr += 2;
         break;
     case 0xe7:
-        ch.fineTune = ch.seq_ptr[1];
-        ch.seq_ptr += 2;
+        ch.fineTune = ch.seqPtr[1];
+        ch.seqPtr += 2;
         break;
     case 0xe8:
         // std::println("[{}] seqStatus[{}] = {}", tick, ch.seq_ptr[1], ch.seq_ptr[2]);
-        seqStatus[ch.seq_ptr[1]] = ch.seq_ptr[2];
-        ch.seq_ptr += 3;
+        seqStatus[ch.seqPtr[1]] = ch.seqPtr[2];
+        ch.seqPtr += 3;
         break;
     case 0xff:
         ch.chFlags |= CH_END;
@@ -674,12 +674,12 @@ void Sf3Player::StepSequence(sndChannel& ch, int idx, bool bgm)
     }
 
     while (1) {
-        u8 status = *ch.seq_ptr;
+        u8 status = *ch.seqPtr;
 
         if (status < 0xc0) {
-            int velocity = (ch.seq_ptr[0] & 0x3f) << 1;
-            int note = ch.seq_ptr[1] & 0x7f;
-            int unkMsb = ch.seq_ptr[1] & 0x80;
+            int velocity = (ch.seqPtr[0] & 0x3f) << 1;
+            int note = ch.seqPtr[1] & 0x7f;
+            int unkMsb = ch.seqPtr[1] & 0x80;
 
             // std::println("[ch{}] note: {:x}, vel: {:x}", idx, note, velocity);
 
@@ -707,9 +707,9 @@ void Sf3Player::StepSequence(sndChannel& ch, int idx, bool bgm)
                 ch.unk6a = 0;
             }
 
-            ch.seq_ptr += 2;
-            auto [len, duration] = readVLQ(ch.seq_ptr);
-            ch.seq_ptr += len;
+            ch.seqPtr += 2;
+            auto [len, duration] = readVLQ(ch.seqPtr);
+            ch.seqPtr += len;
             ch.duration = duration << 8;
         } else {
             int ret = readSeqCtrl(ch, idx, bgm);
@@ -718,9 +718,9 @@ void Sf3Player::StepSequence(sndChannel& ch, int idx, bool bgm)
             }
         }
 
-        auto [len, delay] = readDelay(ch.seq_ptr);
+        auto [len, delay] = readDelay(ch.seqPtr);
         ch.delay += delay << 8;
-        ch.seq_ptr += len;
+        ch.seqPtr += len;
 
         if (delay > 0) {
             break;

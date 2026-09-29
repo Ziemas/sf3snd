@@ -14,14 +14,14 @@ enum chFlag {
 };
 
 struct sndChannel {
-    u8* seq_ptr = nullptr;
+    u8* seqPtr = nullptr;
     u8* sequence = nullptr;
     Tone* tone = nullptr;
     Sample* sample = nullptr;
 
     int pitch = 0;
     int currentPitch = 0;
-	int portamento_target = 0;
+	int portamentoTarget = 0;
     int duration = 0; // duration of current note
     int delay = 0; // delay until next sequence event
     int tremoloLevel = 0;
@@ -34,7 +34,7 @@ struct sndChannel {
     ushort lfoRate = 0;
     ushort volAdjust = 0;
     short transpose = 0;
-    ushort portamento_step = 0;
+    ushort portamentoStep = 0;
     ushort attackStep = 0;
     ushort attackTarget = 0;
     ushort decayStep = 0;
