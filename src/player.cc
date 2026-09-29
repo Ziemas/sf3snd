@@ -367,26 +367,45 @@ void Sf3Player::StepChannel(sndChannel& ch, int idx, bool bgm)
             int step = ch.vibrato * ch.lfoRate;
             s64 max = ch.vibrato << 16;
 
+            // Overflow protection makes this hard to read,
+            // consider making vibratoLevel s64 to simplify
+            // (then it's just add+check/clamp)
+
             if (ch.lfoFlag & 1) {
                 if (ch.vibratoLevel >= step - max) {
-					ch.vibratoLevel -= step;
+                    ch.vibratoLevel -= step;
                 } else {
-					ch.vibratoLevel = -max;
-					ch.lfoFlag &= ~1;
-				}
+                    ch.vibratoLevel = -max;
+                    ch.lfoFlag &= ~1;
+                }
             } else {
                 if (ch.vibratoLevel < max - step) {
-					ch.vibratoLevel += step;
+                    ch.vibratoLevel += step;
                 } else {
-					ch.vibratoLevel = max;
-					ch.lfoFlag |= 1;
-				}
+                    ch.vibratoLevel = max;
+                    ch.lfoFlag |= 1;
+                }
             }
         }
 
         if (ch.tremolo != 0) {
-            if (!(ch.lfoFlag & 2)) {
+            int step = (ch.tremolo * ch.lfoRate) >> 16;
+            int max = ch.tremolo;
+
+            if (ch.lfoFlag & 2) {
+                if (ch.tremoloLevel >= step - max) {
+                    ch.tremoloLevel -= step;
+                } else {
+                    ch.tremoloLevel = -max;
+                    ch.lfoFlag &= ~2;
+                }
             } else {
+                if (ch.tremoloLevel < max - step) {
+                    ch.tremoloLevel += step;
+                } else {
+                    ch.tremoloLevel = max;
+                    ch.lfoFlag |= 2;
+                }
             }
         }
     } else {
@@ -438,7 +457,7 @@ void Sf3Player::StepChannel(sndChannel& ch, int idx, bool bgm)
         }
     }
 
-    int pitch = ch.currentPitch + (ch.pitchBend * 0xc00 >> 7) + ((ch.fineTune - 0x40) * 0x100 >> 6);
+    int pitch = (ch.vibratoLevel >> 16) + ch.currentPitch + (ch.pitchBend * 0xc00 >> 7) + ((ch.fineTune - 0x40) * 0x100 >> 6);
 
     vc.pitch = calcPitch(pitch);
 
