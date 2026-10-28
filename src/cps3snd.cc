@@ -20,17 +20,17 @@ void cps3snd_player_destroy(struct cps3Snd* snd)
 
 void cps3snd_play_sound(struct cps3Snd* snd, int sound)
 {
-    snd->SsRequest(sound);
+    snd->PlaySnd(sound);
 }
 
 void cps3snd_queue_bgm(struct cps3Snd* snd, int sound)
 {
-    snd->SsQueue(sound);
+    snd->QueueBgm(sound);
 }
 
 void cps3snd_bgm_off(struct cps3Snd* snd)
 {
-	snd->SsBgmOff();
+	snd->BgmOff();
 }
 
 void cps3snd_run(struct cps3Snd* snd, int sample_count, int16_t* samples_out)

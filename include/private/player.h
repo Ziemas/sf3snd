@@ -108,9 +108,10 @@ class cps3Player {
 public:
     cps3Player(std::unique_ptr<SoundData> _data);
 
-    void SsBgmOff();
-    void SsRequest(int sound);
-    void SsQueue(int sound);
+    void BgmOff();
+    void QueueBgm(int sound);
+    void PlaySnd(int sound);
+    void PlaySndPan(int sound);
 
     void Step(int steps, s16* out);
 

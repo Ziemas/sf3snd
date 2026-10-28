@@ -49,7 +49,7 @@ cps3Player::cps3Player(std::unique_ptr<SoundData> _data)
     }
 };
 
-void cps3Player::SsBgmOff()
+void cps3Player::BgmOff()
 {
     if (bgmOn) {
         for (auto& ch : bgmChan) {
@@ -60,12 +60,12 @@ void cps3Player::SsBgmOff()
     }
 }
 
-void cps3Player::SsQueue(int sound)
+void cps3Player::QueueBgm(int sound)
 {
     queue = sound;
 }
 
-void cps3Player::SsRequest(int sound)
+void cps3Player::PlaySnd(int sound)
 {
     requestSound(sound, -1);
 }
@@ -80,7 +80,7 @@ void cps3Player::requestSound(int sound, int pan)
 
     Sound& snd = it->second;
     if (snd.flags == 0) {
-        SsBgmOff();
+        BgmOff();
 
         for (int i = 0; i < 16; i++) {
             auto& c = bgmChan[i];
@@ -877,7 +877,7 @@ void cps3Player::Step(int steps, s16* out)
         if (sequenceAcc >= 37286000000) {
             if (queue != -1 && seqStatus[0] == 2) {
                 seqStatus[0] = 0;
-                SsRequest(queue);
+                PlaySnd(queue);
                 queue = -1;
             }
 
