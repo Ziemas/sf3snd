@@ -137,6 +137,9 @@ private:
     sndVoice voice[16];
 
     u8 bgmVolume = 0;
+
+	// for autofade
+    u32 bgmFade = 0;
     u32 bgmTempo = 0;
     u32 channelTempo[16];
     u8 seqStatus[16];

@@ -107,9 +107,41 @@ void cps3Player::requestSound(int sound, int pan)
             c.seqFlags = snd.flags;
         }
 
+		// if fade disabled?
+		bgmFade = 0x8000;
+
         bgmTempo = 0;
         bgmOn = 1;
     } else if ((snd.flags & 0x80) == 0) {
+        for (int i = 0; i < 16; i++) {
+            auto& c = sfxChan[i];
+            auto& t = snd.track_sequence[i];
+
+            if (c.seqFlags <= snd.flags || c.chFlags & 0x80) {
+                if (t.empty()) {
+                    c.chFlags = CH_INACTIVE | CH_END;
+                    continue;
+                }
+
+                c = {};
+
+                c.seqPtr = t.data();
+
+                auto [len, delay] = readDelay(c.seqPtr);
+                c.seqPtr += len;
+
+                c.sequence = t.data();
+                c.delay = delay << 8;
+                c.chFlags = CH_DELAY;
+                auto* prog = &data->instrumentBank[0].program[0].value();
+                c.tone = &prog->instrument[0];
+                c.sample = &data->sample[prog->instrument[0].sampleIdx];
+                c.seqFlags = snd.flags;
+
+                // TODO autopan settings
+            }
+        }
+
         std::println("playing multi channel sound?");
     } else {
         std::println("playing single channel sound?");
@@ -182,7 +214,7 @@ int cps3Player::calcVol(int env, int lfo, s8 vol, sndChannel& ch)
     ret = std::clamp<int>(ret, 0, INT16_MAX);
 
     if (ch.seqFlags == 0) {
-        // TODO bgm fade vol
+        ret = (ret * (u16)(bgmFade >> 8)) >> 7;
     }
 
     return ret;
