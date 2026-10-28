@@ -33,7 +33,7 @@ static std::pair<size_t, u32> readVLQ(u8* value)
     return { len, out };
 }
 
-Sf3Player::Sf3Player(std::unique_ptr<SoundData> _data)
+cps3Player::cps3Player(std::unique_ptr<SoundData> _data)
     : data(std::move(_data))
 {
     for (auto& p : chPan) {
@@ -49,12 +49,7 @@ Sf3Player::Sf3Player(std::unique_ptr<SoundData> _data)
     }
 };
 
-std::unique_ptr<Sf3Player> Sf3Player::makePlayer(std::unique_ptr<SoundData> _data)
-{
-    return std::make_unique<Sf3Player>(std::move(_data));
-}
-
-void Sf3Player::SsBgmOff()
+void cps3Player::SsBgmOff()
 {
     if (bgmOn) {
         for (auto& ch : bgmChan) {
@@ -65,17 +60,17 @@ void Sf3Player::SsBgmOff()
     }
 }
 
-void Sf3Player::SsQueue(int sound)
+void cps3Player::SsQueue(int sound)
 {
     queue = sound;
 }
 
-void Sf3Player::SsRequest(int sound)
+void cps3Player::SsRequest(int sound)
 {
     requestSound(sound, -1);
 }
 
-void Sf3Player::requestSound(int sound, int pan)
+void cps3Player::requestSound(int sound, int pan)
 {
     auto it = data->sound.find(sound);
     if (it == data->sound.end()) {
@@ -121,7 +116,7 @@ void Sf3Player::requestSound(int sound, int pan)
     }
 }
 
-int Sf3Player::calcPitch(int pitch)
+int cps3Player::calcPitch(int pitch)
 {
     int ret = 0;
     int unk = 0;
@@ -158,7 +153,7 @@ static int envRate(int value, int rate, const ushort* table)
     return ret;
 }
 
-int Sf3Player::calcVol(int env, int lfo, s8 vol, sndChannel& ch)
+int cps3Player::calcVol(int env, int lfo, s8 vol, sndChannel& ch)
 {
     int ret;
     int expression;
@@ -193,7 +188,7 @@ int Sf3Player::calcVol(int env, int lfo, s8 vol, sndChannel& ch)
     return ret;
 }
 
-void Sf3Player::StepChannel(sndChannel& ch, int idx, bool bgm)
+void cps3Player::StepChannel(sndChannel& ch, int idx, bool bgm)
 {
     auto& vc = voice[idx];
 
@@ -466,7 +461,7 @@ void Sf3Player::StepChannel(sndChannel& ch, int idx, bool bgm)
     }
 }
 
-int Sf3Player::playNote(sndChannel& ch, int note, int velocity)
+int cps3Player::playNote(sndChannel& ch, int note, int velocity)
 {
     ch.note = note;
     ch.velocity = velocity;
@@ -506,7 +501,7 @@ int Sf3Player::playNote(sndChannel& ch, int note, int velocity)
     return 0;
 }
 
-int Sf3Player::readSeqCtrl(sndChannel& ch, int idx, bool bgm)
+int cps3Player::readSeqCtrl(sndChannel& ch, int idx, bool bgm)
 {
     u8 status = *ch.seqPtr;
 
@@ -716,7 +711,7 @@ int Sf3Player::readSeqCtrl(sndChannel& ch, int idx, bool bgm)
     return 0;
 }
 
-void Sf3Player::StepSequence(sndChannel& ch, int idx, bool bgm)
+void cps3Player::StepSequence(sndChannel& ch, int idx, bool bgm)
 {
     if (ch.chFlags & (CH_END | CH_DELAY)) {
         return;
@@ -779,7 +774,7 @@ void Sf3Player::StepSequence(sndChannel& ch, int idx, bool bgm)
     ch.chFlags |= CH_DELAY;
 }
 
-void Sf3Player::StepSequencer()
+void cps3Player::StepSequencer()
 {
     for (int i = 0; i < 16; i++) {
         StepSequence(bgmChan[i], i, true);
@@ -802,7 +797,7 @@ void Sf3Player::StepSequencer()
     }
 }
 
-void Sf3Player::StepSynth(s16* out)
+void cps3Player::StepSynth(s16* out)
 {
     int accl = 0, accr = 0;
 
@@ -842,7 +837,7 @@ void Sf3Player::StepSynth(s16* out)
     out[1] = std::clamp(accr, INT16_MIN, INT16_MAX);
 }
 
-void Sf3Player::Step(int steps, s16* out)
+void cps3Player::Step(int steps, s16* out)
 {
     while (steps) {
         sequenceAcc += 59599491;

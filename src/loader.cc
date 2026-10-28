@@ -164,24 +164,3 @@ std::unique_ptr<SoundData> loadSoundData(std::span<u8> code, std::span<u8> data)
 
     return sd;
 }
-
-std::vector<uint8_t> read_binary_file(const char* path)
-{
-    FILE* fp = fopen(path, "r");
-
-    fseek(fp, 0, SEEK_END);
-    auto len = ftell(fp);
-    if (len == 0) {
-        fclose(fp);
-        return {};
-    }
-    rewind(fp);
-
-    std::vector<uint8_t> data;
-    data.resize(len);
-
-    fread(data.data(), len, 1, fp);
-    fclose(fp);
-
-    return data;
-}

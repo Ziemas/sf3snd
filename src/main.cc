@@ -1,8 +1,5 @@
-#include "BinaryReader.h"
-#include "common.h"
-#include "loader.h"
-#include "player.h"
-#include "snd_data.h"
+#include "cps3snd.h"
+#include "private/common.h"
 
 #include <SDL3/SDL.h>
 #include <cstdio>
@@ -14,9 +11,9 @@
 #include <unordered_map>
 #include <vector>
 
-std::unique_ptr<Sf3Player> player;
 static SDL_AudioStream* stream;
 SDL_Mutex* soundLock;
+cps3Snd* player;
 
 std::unordered_map<std::string, int (*)(int, char**)> commands;
 
@@ -94,7 +91,7 @@ static int playSound(int ac, char** tokens)
     }
 
     SDL_LockMutex(soundLock);
-    player->SsRequest(idx);
+    cps3snd_play_sound(player, idx);
     SDL_UnlockMutex(soundLock);
 
     return 0;
@@ -114,7 +111,7 @@ static int queueSound(int ac, char** tokens)
     }
 
     SDL_LockMutex(soundLock);
-    player->SsQueue(idx);
+    cps3snd_queue_bgm(player, idx);
     SDL_UnlockMutex(soundLock);
 
     return 0;
@@ -123,7 +120,7 @@ static int queueSound(int ac, char** tokens)
 static int stopSounds(int ac, char** tokens)
 {
     SDL_LockMutex(soundLock);
-    player->SsBgmOff();
+	cps3snd_bgm_off(player);
     SDL_UnlockMutex(soundLock);
 
     return 0;
@@ -142,7 +139,7 @@ void SDL_CB(void* user, SDL_AudioStream* stream, int additional_amount, int tota
     while (samples_per_channel) {
         u32 batch_count = std::min<u32>(samples_per_channel, 4096);
         s16* p = outbuf;
-        player->Step(batch_count, p);
+        cps3snd_run(player, batch_count, p);
 
         SDL_PutAudioStreamData(stream, outbuf, (batch_count * sizeof(s16)) << 1);
         samples_per_channel -= batch_count;
@@ -175,6 +172,27 @@ int startAudio()
     return 0;
 }
 
+std::vector<uint8_t> read_binary_file(const char* path)
+{
+    FILE* fp = fopen(path, "r");
+
+    fseek(fp, 0, SEEK_END);
+    auto len = ftell(fp);
+    if (len == 0) {
+        fclose(fp);
+        return {};
+    }
+    rewind(fp);
+
+    std::vector<uint8_t> data;
+    data.resize(len);
+
+    fread(data.data(), len, 1, fp);
+    fclose(fp);
+
+    return data;
+}
+
 int main(int argc, char** argv)
 {
     (void)argc;
@@ -183,8 +201,7 @@ int main(int argc, char** argv)
     std::vector<u8> code = read_binary_file("decrypted.bin");
     std::vector<u8> data = read_binary_file("user5.bin");
 
-    auto soundData = loadSoundData(code, data);
-    player = Sf3Player::makePlayer(std::move(soundData));
+    player = cps3snd_player_create(code.data(), code.size(), data.data(), data.size());
 
     if (startAudio() < 0) {
         return -1;
@@ -194,10 +211,6 @@ int main(int argc, char** argv)
     commands["p"] = playSound;
     commands["q"] = queueSound;
     commands["s"] = stopSounds;
-
-    SDL_LockMutex(soundLock);
-    //player->SsRequest(3);
-    SDL_UnlockMutex(soundLock);
 
     command_loop();
 

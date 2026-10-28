@@ -104,11 +104,10 @@ struct sndPanState {
     s16 mode;
 };
 
-class Sf3Player {
+class cps3Player {
 public:
-    Sf3Player(std::unique_ptr<SoundData> _data);
+    cps3Player(std::unique_ptr<SoundData> _data);
 
-    static std::unique_ptr<Sf3Player> makePlayer(std::unique_ptr<SoundData> _data);
     void SsBgmOff();
     void SsRequest(int sound);
     void SsQueue(int sound);
